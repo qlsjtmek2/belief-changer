@@ -35,9 +35,9 @@ export interface TTSProviderSettings {
   openaiApiKey: string;
 }
 
-// 화자별 음성 설정 (Provider별)
-export interface SpeakerVoiceSettings {
-  webspeech: Record<string, string>;   // speakerKey -> voiceId
-  elevenlabs: Record<string, string>;
-  openai: Record<string, string>;
+// Provider별 선택된 음성 (빈 문자열 = 랜덤)
+export interface SelectedVoiceSettings {
+  webspeech: string;   // voiceId or '' for random
+  elevenlabs: string;
+  openai: string;
 }

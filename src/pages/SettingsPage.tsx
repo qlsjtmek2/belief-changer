@@ -6,8 +6,6 @@ import { DEFAULT_PROMPT_TEMPLATE } from '../utils/prompts';
 import type { TTSProviderType } from '../types';
 import './SettingsPage.css';
 
-const SPEAKER_LABELS = ['화자 1', '화자 2', '화자 3'];
-
 const GEMINI_MODELS = [
   { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', description: '최고 성능 (Preview)' },
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: '빠른 속도 + 고성능 (Preview)' },
@@ -32,7 +30,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     geminiApiKey,
     voiceSettings,
     ttsProvider,
-    speakerVoices,
+    selectedVoice,
     geminiSettings,
     setUserName,
     setGeminiApiKey,
@@ -41,7 +39,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setActiveProvider,
     setElevenLabsApiKey,
     setOpenAIApiKey,
-    setSpeakerVoice,
+    setSelectedVoice,
     getActiveApiKey,
     setGeminiModel,
     setGeminiTemperature,
@@ -74,15 +72,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     loadVoices();
   }, [loadVoices]);
 
-  // 화자별 음성 선택 핸들러
-  const handleSpeakerVoiceChange = (speakerIndex: number, voiceId: string) => {
-    setSpeakerVoice(ttsProvider.activeProvider, String(speakerIndex), voiceId);
+  // 음성 선택 핸들러
+  const handleVoiceChange = (voiceId: string) => {
+    setSelectedVoice(ttsProvider.activeProvider, voiceId);
   };
 
-  // 현재 Provider의 화자별 선택된 음성 ID 가져오기
-  const getSelectedVoiceId = (speakerIndex: number): string => {
-    return speakerVoices[ttsProvider.activeProvider]?.[String(speakerIndex)] ?? '';
-  };
+  // 현재 Provider의 선택된 음성 ID 가져오기
+  const currentSelectedVoice = selectedVoice[ttsProvider.activeProvider] ?? '';
 
   return (
     <div className="settings-page">
@@ -314,9 +310,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             )}
 
-            {/* 화자별 음성 선택 */}
+            {/* 음성 선택 */}
             <div className="settings-page__voice-selection">
-              <span className="settings-page__label">화자별 음성</span>
+              <span className="settings-page__label">음성</span>
               {isLoadingVoices ? (
                 <div className="settings-page__voice-loading">음성 목록을 불러오는 중...</div>
               ) : availableVoices.length === 0 ? (
@@ -326,34 +322,22 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     : '사용 가능한 음성이 없습니다.'}
                 </div>
               ) : (
-                <div className="settings-page__voice-list">
-                  {SPEAKER_LABELS.map((label, index) => (
-                    <div key={index} className="settings-page__voice-item">
-                      <label
-                        htmlFor={`speaker-${index}`}
-                        className="settings-page__voice-label"
-                      >
-                        {label}
-                      </label>
-                      <select
-                        id={`speaker-${index}`}
-                        className="settings-page__voice-select"
-                        value={getSelectedVoiceId(index)}
-                        onChange={(e) => handleSpeakerVoiceChange(index, e.target.value)}
-                      >
-                        <option value="">자동 선택</option>
-                        {availableVoices.map((voice) => (
-                          <option key={voice.id} value={voice.id}>
-                            {voice.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                <select
+                  id="voice-select"
+                  className="settings-page__select"
+                  value={currentSelectedVoice}
+                  onChange={(e) => handleVoiceChange(e.target.value)}
+                >
+                  <option value="">랜덤 선택</option>
+                  {availableVoices.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.name}
+                    </option>
                   ))}
-                </div>
+                </select>
               )}
               <p className="settings-page__hint">
-                대화 재생 시 각 화자에게 할당될 음성을 선택합니다.
+                랜덤 선택 시 매번 다른 음성으로 재생됩니다. 특정 음성을 선택하면 해당 음성으로 고정됩니다.
               </p>
             </div>
           </div>

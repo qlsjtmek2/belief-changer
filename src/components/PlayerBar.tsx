@@ -21,6 +21,7 @@ export function PlayerBar() {
     ttsProvider,
     getActiveApiKey,
     hasTTSApiKey,
+    getSelectedVoice,
   } = useSettingsStore();
 
   const isPlayingRef = useRef(false);
@@ -68,9 +69,14 @@ export function PlayerBar() {
       while (isPlayingRef.current) {
         const affirmation = affirmations[idx];
 
+        // 매 재생 시 최신 음성 설정 가져오기 (설정 변경 즉시 반영)
+        const selectedVoice = getSelectedVoice();
+        const voices = selectedVoice ? [selectedVoice] : undefined;
+
         await new Promise<void>((resolve, reject) => {
           speakText(affirmation.text, {
             settings: voiceSettings,
+            voices,
             onComplete: () => resolve(),
             onError: (err) => reject(err),
           });

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SpeakerVoiceSettings, GeminiSettings } from '../types';
+import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SelectedVoiceSettings, GeminiSettings } from '../types';
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   rate: 1,
@@ -14,10 +14,10 @@ const DEFAULT_TTS_PROVIDER_SETTINGS: TTSProviderSettings = {
   openaiApiKey: '',
 };
 
-const DEFAULT_SPEAKER_VOICES: SpeakerVoiceSettings = {
-  webspeech: {},
-  elevenlabs: {},
-  openai: {},
+const DEFAULT_SELECTED_VOICE: SelectedVoiceSettings = {
+  webspeech: '',  // '' = 랜덤
+  elevenlabs: '',
+  openai: '',
 };
 
 const DEFAULT_GEMINI_SETTINGS: GeminiSettings = {
@@ -30,8 +30,8 @@ interface SettingsState extends Settings {
   // TTS Provider 설정
   ttsProvider: TTSProviderSettings;
 
-  // 화자별 음성 설정
-  speakerVoices: SpeakerVoiceSettings;
+  // 선택된 음성 설정 (Provider별, '' = 랜덤)
+  selectedVoice: SelectedVoiceSettings;
 
   // Gemini 설정
   geminiSettings: GeminiSettings;
@@ -50,10 +50,9 @@ interface SettingsState extends Settings {
   getActiveApiKey: () => string | undefined;
   hasTTSApiKey: (provider?: TTSProviderType) => boolean;
 
-  // Actions - 화자별 음성
-  setSpeakerVoice: (provider: TTSProviderType, speakerKey: string, voiceId: string) => void;
-  getSpeakerVoice: (provider: TTSProviderType, speakerKey: string) => string | undefined;
-  getSpeakerVoiceMap: (provider: TTSProviderType) => Map<string, string>;
+  // Actions - 음성 선택
+  setSelectedVoice: (provider: TTSProviderType, voiceId: string) => void;
+  getSelectedVoice: (provider?: TTSProviderType) => string;
 
   // Actions - Gemini 설정
   setGeminiModel: (model: string) => void;
@@ -69,7 +68,7 @@ export const useSettingsStore = create<SettingsState>()(
       geminiApiKey: '',
       voiceSettings: DEFAULT_VOICE_SETTINGS,
       ttsProvider: DEFAULT_TTS_PROVIDER_SETTINGS,
-      speakerVoices: DEFAULT_SPEAKER_VOICES,
+      selectedVoice: DEFAULT_SELECTED_VOICE,
       geminiSettings: DEFAULT_GEMINI_SETTINGS,
 
       setUserName: (name: string) => {
@@ -140,26 +139,20 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
 
-      // 화자별 음성 액션
-      setSpeakerVoice: (provider: TTSProviderType, speakerKey: string, voiceId: string) => {
+      // 음성 선택 액션
+      setSelectedVoice: (provider: TTSProviderType, voiceId: string) => {
         set((state) => ({
-          speakerVoices: {
-            ...state.speakerVoices,
-            [provider]: {
-              ...state.speakerVoices[provider],
-              [speakerKey]: voiceId,
-            },
+          selectedVoice: {
+            ...state.selectedVoice,
+            [provider]: voiceId,
           },
         }));
       },
 
-      getSpeakerVoice: (provider: TTSProviderType, speakerKey: string) => {
-        return get().speakerVoices[provider]?.[speakerKey];
-      },
-
-      getSpeakerVoiceMap: (provider: TTSProviderType) => {
-        const voiceSettings = get().speakerVoices[provider] ?? {};
-        return new Map(Object.entries(voiceSettings));
+      getSelectedVoice: (provider?: TTSProviderType) => {
+        const state = get();
+        const targetProvider = provider ?? state.ttsProvider.activeProvider;
+        return state.selectedVoice[targetProvider] ?? '';
       },
 
       // Gemini 설정 액션
@@ -196,10 +189,10 @@ export const useSettingsStore = create<SettingsState>()(
           ...DEFAULT_TTS_PROVIDER_SETTINGS,
           ...((persistedState as Partial<SettingsState>)?.ttsProvider ?? {}),
         },
-        // speakerVoices가 없는 기존 데이터 처리
-        speakerVoices: {
-          ...DEFAULT_SPEAKER_VOICES,
-          ...((persistedState as Partial<SettingsState>)?.speakerVoices ?? {}),
+        // selectedVoice가 없는 기존 데이터 처리
+        selectedVoice: {
+          ...DEFAULT_SELECTED_VOICE,
+          ...((persistedState as Partial<SettingsState>)?.selectedVoice ?? {}),
         },
         // geminiSettings가 없는 기존 데이터 처리
         geminiSettings: {
