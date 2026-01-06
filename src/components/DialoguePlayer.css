@@ -1,0 +1,204 @@
+/* DialoguePlayer Component Styles */
+
+.dialogue-player {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+/* Progress Bar */
+.dialogue-player__progress {
+  height: 3px;
+  background-color: var(--color-bg-elevated);
+}
+
+.dialogue-player__progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
+  transition: width 0.3s ease;
+}
+
+/* Dialogue List */
+.dialogue-player__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  max-height: 300px;
+  padding: var(--spacing-4);
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.dialogue-player__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dialogue-player__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dialogue-player__list::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface-border);
+  border-radius: 3px;
+}
+
+/* Dialogue Line */
+.dialogue-player__line {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.dialogue-player__line--past {
+  opacity: 0.4;
+}
+
+.dialogue-player__line--active {
+  opacity: 1;
+  background-color: var(--color-surface-hover);
+  box-shadow:
+    0 0 0 1px var(--color-primary),
+    0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+.dialogue-player__speaker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dialogue-player__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+/* Sound Wave Indicator */
+.dialogue-player__indicator {
+  position: absolute;
+  top: var(--spacing-3);
+  right: var(--spacing-3);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.dialogue-player__wave {
+  width: 3px;
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+  animation: wave 0.8s ease-in-out infinite;
+}
+
+.dialogue-player__wave:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.dialogue-player__wave:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dialogue-player__wave:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Controls */
+.dialogue-player__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-surface-border);
+}
+
+.dialogue-player__status {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.dialogue-player__spacer {
+  flex: 1;
+}
+
+.dialogue-player__buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.dialogue-player__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dialogue-player__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dialogue-player__btn--stop {
+  width: 36px;
+  height: 36px;
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.dialogue-player__btn--stop:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.dialogue-player__btn--primary {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.dialogue-player__btn--primary:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.dialogue-player__btn--primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
