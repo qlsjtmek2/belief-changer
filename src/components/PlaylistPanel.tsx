@@ -6,6 +6,7 @@ interface PlaylistPanelProps {
   affirmations: Affirmation[];
   currentIndex: number;
   playbackStatus: PlaybackStatus;
+  isNewItem: (id: string) => boolean;
   onSelect: (index: number) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, text: string) => void;
@@ -16,6 +17,7 @@ export function PlaylistPanel({
   affirmations,
   currentIndex,
   playbackStatus,
+  isNewItem,
   onSelect,
   onDelete,
   onUpdate,
@@ -127,7 +129,7 @@ export function PlaylistPanel({
               index === currentIndex ? 'playlist-item--current' : ''
             } ${dragOverIndex === index ? 'playlist-item--drag-over' : ''} ${
               editingId === affirmation.id ? 'playlist-item--editing' : ''
-            }`}
+            } ${isNewItem(affirmation.id) ? 'playlist-item--new' : ''}`}
             draggable={editingId !== affirmation.id}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragEnd={handleDragEnd}

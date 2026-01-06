@@ -25,6 +25,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     reorder,
     setCurrentIndex,
     resetPlayback,
+    isNewItem,
   } = useAffirmationStore();
 
   const {
@@ -252,6 +253,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
               affirmations={affirmations}
               currentIndex={currentIndex}
               playbackStatus={playbackStatus}
+              isNewItem={isNewItem}
               onSelect={handleSelect}
               onDelete={handleDelete}
               onUpdate={updateAffirmation}

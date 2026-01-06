@@ -6,6 +6,7 @@ interface AffirmationState {
   affirmations: Affirmation[];
   currentIndex: number;
   playbackStatus: PlaybackStatus;
+  newItemIds: Set<string>; // 새로 추가된 아이템 (애니메이션용)
 
   // Actions
   addAffirmations: (texts: string[]) => Affirmation[];
@@ -13,9 +14,11 @@ interface AffirmationState {
   deleteAffirmation: (id: string) => void;
   clearAll: () => void;
   reorder: (ids: string[]) => void;
+  clearNewItemIds: () => void;
 
   // Getters
   getCurrent: () => Affirmation | null;
+  isNewItem: (id: string) => boolean;
 
   // Playback controls
   setCurrentIndex: (index: number) => void;
@@ -30,6 +33,7 @@ export const useAffirmationStore = create<AffirmationState>()(
       affirmations: [],
       currentIndex: 0,
       playbackStatus: 'idle',
+      newItemIds: new Set<string>(),
 
       addAffirmations: (texts: string[]) => {
         const newAffirmations: Affirmation[] = texts.map((text) => ({
@@ -37,9 +41,15 @@ export const useAffirmationStore = create<AffirmationState>()(
           text,
           createdAt: Date.now(),
         }));
+        const newIds = new Set(newAffirmations.map((a) => a.id));
         set((state) => ({
           affirmations: [...state.affirmations, ...newAffirmations],
+          newItemIds: newIds,
         }));
+        // 애니메이션 후 자동 클리어 (600ms)
+        setTimeout(() => {
+          get().clearNewItemIds();
+        }, 600);
         return newAffirmations;
       },
 
@@ -103,6 +113,14 @@ export const useAffirmationStore = create<AffirmationState>()(
       getCurrent: () => {
         const { affirmations, currentIndex } = get();
         return affirmations[currentIndex] ?? null;
+      },
+
+      isNewItem: (id: string) => {
+        return get().newItemIds.has(id);
+      },
+
+      clearNewItemIds: () => {
+        set({ newItemIds: new Set() });
       },
 
       setCurrentIndex: (index: number) => {
