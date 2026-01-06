@@ -1,21 +1,21 @@
 import { useState, useRef } from 'react';
-import type { Dialogue, PlaybackStatus } from '../types';
+import type { Affirmation, PlaybackStatus } from '../types';
 import './PlaylistPanel.css';
 
 interface PlaylistPanelProps {
-  dialogues: Dialogue[];
+  affirmations: Affirmation[];
   currentIndex: number;
   playbackStatus: PlaybackStatus;
   onSelect: (index: number) => void;
   onDelete: (id: string) => void;
-  onReorder: (dialogueIds: string[]) => void;
+  onReorder: (ids: string[]) => void;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
 }
 
 export function PlaylistPanel({
-  dialogues,
+  affirmations,
   currentIndex,
   playbackStatus,
   onSelect,
@@ -32,7 +32,6 @@ export function PlaylistPanel({
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
 
-    // 드래그 중인 요소에 스타일 적용
     if (e.currentTarget instanceof HTMLElement) {
       e.currentTarget.classList.add('playlist-item--dragging');
     }
@@ -65,11 +64,11 @@ export function PlaylistPanel({
       return;
     }
 
-    const newDialogues = [...dialogues];
-    const [removed] = newDialogues.splice(dragIndex, 1);
-    newDialogues.splice(dropIndex, 0, removed);
+    const newAffirmations = [...affirmations];
+    const [removed] = newAffirmations.splice(dragIndex, 1);
+    newAffirmations.splice(dropIndex, 0, removed);
 
-    onReorder(newDialogues.map((d) => d.id));
+    onReorder(newAffirmations.map((a) => a.id));
     setDragOverIndex(null);
   };
 
@@ -81,12 +80,7 @@ export function PlaylistPanel({
     }
   };
 
-  const truncateText = (text: string, maxLength: number = 30) => {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength) + '...';
-  };
-
-  if (dialogues.length === 0) {
+  if (affirmations.length === 0) {
     return null;
   }
 
@@ -123,15 +117,15 @@ export function PlaylistPanel({
           </svg>
         </button>
         <span className="playlist-info">
-          {dialogues.length}개 대화
+          {affirmations.length}개 확언
         </span>
       </div>
 
-      {/* 대화 목록 */}
+      {/* 확언 목록 */}
       <div className="playlist-items">
-        {dialogues.map((dialogue, index) => (
+        {affirmations.map((affirmation, index) => (
           <div
-            key={dialogue.id}
+            key={affirmation.id}
             className={`playlist-item ${
               index === currentIndex ? 'playlist-item--current' : ''
             } ${dragOverIndex === index ? 'playlist-item--drag-over' : ''}`}
@@ -155,16 +149,10 @@ export function PlaylistPanel({
               </svg>
             </div>
 
-            {/* 번호 */}
-            <span className="playlist-item__number">{index + 1}</span>
-
             {/* 확언 텍스트 */}
             <div className="playlist-item__content">
               <span className="playlist-item__text">
-                {truncateText(dialogue.sourceAffirmation)}
-              </span>
-              <span className="playlist-item__meta">
-                {dialogue.lines.length}개 라인
+                {affirmation.text}
               </span>
             </div>
 
@@ -182,7 +170,7 @@ export function PlaylistPanel({
               className="playlist-item__delete"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(dialogue.id);
+                onDelete(affirmation.id);
               }}
               aria-label="삭제"
             >

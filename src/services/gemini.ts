@@ -1,44 +1,37 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import type { DialogueLine, GeminiSettings } from '../types';
-import { createDialoguePrompt } from '../utils/prompts';
+import type { GeminiSettings } from '../types';
+import { createAffirmationPrompt } from '../utils/prompts';
 
 const DEFAULT_MODEL = 'gemini-2.0-flash';
 const DEFAULT_TEMPERATURE = 1.0;
 
-const dialogueSchema = {
+const affirmationSchema = {
   type: Type.ARRAY,
   items: {
-    type: Type.OBJECT,
-    properties: {
-      speaker: {
-        type: Type.STRING,
-        description: '화자의 이름 또는 역할 (예: 친구, 동료, 멘토)',
-      },
-      text: {
-        type: Type.STRING,
-        description: '화자가 말하는 대사',
-      },
-    },
-    propertyOrdering: ['speaker', 'text'],
-    required: ['speaker', 'text'],
+    type: Type.STRING,
+    description: '변형된 확언 문장',
   },
 };
 
-export interface GenerateDialogueOptions {
+export interface GenerateAffirmationsOptions {
   affirmation: string;
   userName?: string;
-  speakerCount?: number;
+  count?: number;
   geminiSettings?: GeminiSettings;
 }
 
-export async function generateDialogue(
+/**
+ * 확언을 변형하여 여러 버전 생성
+ * @returns 변형된 확언 문자열 배열
+ */
+export async function generateAffirmations(
   apiKey: string,
-  options: GenerateDialogueOptions
-): Promise<DialogueLine[]> {
+  options: GenerateAffirmationsOptions
+): Promise<string[]> {
   const {
     affirmation,
     userName = '사용자',
-    speakerCount = 3,
+    count = 3,
     geminiSettings,
   } = options;
 
@@ -47,14 +40,14 @@ export async function generateDialogue(
   const customPrompt = geminiSettings?.customPrompt;
 
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = createDialoguePrompt(affirmation, userName, speakerCount, customPrompt);
+  const prompt = createAffirmationPrompt(affirmation, userName, count, customPrompt);
 
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
     config: {
       responseMimeType: 'application/json',
-      responseSchema: dialogueSchema,
+      responseSchema: affirmationSchema,
       temperature,
     },
   });
@@ -64,6 +57,6 @@ export async function generateDialogue(
     throw new Error('Gemini API 응답이 비어있습니다.');
   }
 
-  const dialogueLines: DialogueLine[] = JSON.parse(text);
-  return dialogueLines;
+  const affirmations: string[] = JSON.parse(text);
+  return affirmations;
 }

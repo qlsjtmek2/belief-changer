@@ -1,2 +1,2 @@
-export { useDialogueStore } from './dialogueStore';
+export { useAffirmationStore } from './affirmationStore';
 export { useSettingsStore } from './settingsStore';

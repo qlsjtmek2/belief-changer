@@ -1,1 +1,1 @@
-export { createDialoguePrompt } from './prompts';
+export { createAffirmationPrompt } from './prompts';

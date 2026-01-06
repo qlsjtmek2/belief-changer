@@ -1,9 +1,9 @@
-export { generateDialogue } from './gemini';
-export type { GenerateDialogueOptions } from './gemini';
+export { generateAffirmations } from './gemini';
+export type { GenerateAffirmationsOptions } from './gemini';
 
-// TTS 서비스 (새 Provider 패턴)
+// TTS 서비스
 export {
-  speakDialogue,
+  speakText,
   pause,
   resume,
   stop,
@@ -15,5 +15,5 @@ export type {
   TTSVoice,
   TTSProviderConfig,
   TTSSpeakOptions,
-  SpeakDialogueOptions,
+  SpeakTextOptions,
 } from './tts';

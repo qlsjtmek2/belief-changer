@@ -1,44 +1,35 @@
 /**
  * TTS 서비스 공개 API
- *
- * 기존 함수 시그니처를 유지하여 하위 호환성을 보장합니다.
- * 새로운 Provider 패턴은 ttsManager를 통해 사용할 수 있습니다.
  */
 
-import type { DialogueLine, VoiceSettings } from '../../types';
+import type { VoiceSettings } from '../../types';
 import { ttsManager } from './TTSManager';
-import { speakDialogueWithProvider, stopDialogue } from './speakDialogue';
+import { speakTextWithProvider, stopText } from './speakText';
 
 // === 타입 export ===
 export type { TTSProvider, TTSVoice, TTSProviderConfig, TTSSpeakOptions } from './types';
-export type { SpeakDialogueOptions } from './speakDialogue';
+export type { SpeakTextOptions } from './speakText';
 
 // === Manager export ===
 export { ttsManager } from './TTSManager';
 
-// === 대화 재생 옵션 (하위 호환) ===
-export interface LegacySpeakDialogueOptions {
+// === 텍스트 재생 옵션 ===
+export interface SpeakOptions {
   settings?: VoiceSettings;
-  loop?: boolean;
-  /** 화자별 음성 ID 매핑 (화자 인덱스 "0", "1", "2" -> voiceId) */
-  speakerVoiceMap?: Map<string, string>;
-  onLineStart?: (index: number) => void;
-  onLineEnd?: (index: number) => void;
+  /** 사용할 음성 ID 목록 (랜덤 선택용) */
+  voices?: string[];
+  onStart?: () => void;
   onComplete?: () => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * 대화 스크립트를 순차 재생합니다.
- *
- * Provider가 설정되지 않은 경우 자동으로 WebSpeech를 사용합니다.
- *
- * @param lines - 대화 라인 배열
- * @param options - 재생 옵션
+ * 단일 텍스트를 재생합니다.
+ * 음성은 랜덤으로 선택됩니다.
  */
-export async function speakDialogue(
-  lines: DialogueLine[],
-  options: LegacySpeakDialogueOptions = {}
+export async function speakText(
+  text: string,
+  options: SpeakOptions = {}
 ): Promise<void> {
   // Provider가 설정되지 않았으면 WebSpeech 사용
   if (!ttsManager.isReady()) {
@@ -54,7 +45,7 @@ export async function speakDialogue(
     throw error;
   }
 
-  return speakDialogueWithProvider(lines, provider, options);
+  return speakTextWithProvider(text, provider, options);
 }
 
 /**
@@ -75,7 +66,7 @@ export function resume(): void {
  * 현재 재생을 중지합니다.
  */
 export function stop(): void {
-  stopDialogue(); // 루프 중지
+  stopText();
   ttsManager.getProvider()?.stop();
 }
 

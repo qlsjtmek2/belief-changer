@@ -1,42 +1,33 @@
 import { useState, useCallback, useRef } from 'react';
 import { Button, Input, PlaylistPanel } from '../components';
-import { useDialogueStore, useSettingsStore } from '../store';
-import { generateDialogue, speakDialogue, pause, resume, stop, ttsManager } from '../services';
-import type { RawDialogueLine } from '../types';
+import { useAffirmationStore, useSettingsStore } from '../store';
+import { generateAffirmations, speakText, pause, resume, stop, ttsManager } from '../services';
 import './HomePage.css';
 
 interface HomePageProps {
   onNavigateToSettings: () => void;
 }
 
-interface GenerationProgress {
-  total: number;
-  completed: number;
-  failed: number;
-}
-
 export function HomePage({ onNavigateToSettings }: HomePageProps) {
-  const [affirmationText, setAffirmationText] = useState('');
-  const [dialogueCount, setDialogueCount] = useState(3);
+  const [inputText, setInputText] = useState('');
+  const [count, setCount] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isPlayingRef = useRef(false);
 
   // Stores
   const {
-    dialogues,
-    currentDialogueIndex,
+    affirmations,
+    currentIndex,
     playbackStatus,
-    addDialogues,
-    deleteDialogue,
-    reorderDialogues,
-    setCurrentDialogue,
-    advanceToNextDialogue,
+    addAffirmations,
+    deleteAffirmation,
+    reorder,
+    setCurrentIndex,
+    advanceToNext,
     setPlaybackStatus,
-    setCurrentLineIndex,
     resetPlayback,
-  } = useDialogueStore();
+  } = useAffirmationStore();
 
   const {
     geminiApiKey,
@@ -47,14 +38,13 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     hasApiKey,
     getActiveApiKey,
     hasTTSApiKey,
-    getSpeakerVoiceMap,
   } = useSettingsStore();
 
-  const isEmpty = dialogues.length === 0;
+  const isEmpty = affirmations.length === 0;
 
-  // N개 대화 생성
+  // 확언 변형 생성
   const handleGenerate = async () => {
-    const trimmed = affirmationText.trim();
+    const trimmed = inputText.trim();
     if (!trimmed || !hasApiKey()) {
       setError('확언을 입력하고 API 키를 설정해주세요.');
       return;
@@ -62,49 +52,23 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
     setIsGenerating(true);
     setError(null);
-    setGenerationProgress({ total: dialogueCount, completed: 0, failed: 0 });
 
     try {
-      const promises = Array(dialogueCount)
-        .fill(null)
-        .map(() =>
-          generateDialogue(geminiApiKey, {
-            affirmation: trimmed,
-            userName: userName || '사용자',
-            speakerCount: 3,
-            geminiSettings,
-          })
-        );
+      const generatedTexts = await generateAffirmations(geminiApiKey, {
+        affirmation: trimmed,
+        userName: userName || '사용자',
+        count,
+        geminiSettings,
+      });
 
-      const results = await Promise.allSettled(promises);
-
-      const successfulDialogues: RawDialogueLine[][] = [];
-      let completed = 0;
-      let failed = 0;
-
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          successfulDialogues.push(result.value);
-          completed++;
-        } else {
-          failed++;
-        }
-        setGenerationProgress({ total: dialogueCount, completed, failed });
-      }
-
-      if (successfulDialogues.length > 0) {
-        addDialogues(trimmed, successfulDialogues);
-        setAffirmationText('');
-      }
-
-      if (failed > 0) {
-        setError(`${failed}개의 대화 생성에 실패했습니다.`);
+      if (generatedTexts.length > 0) {
+        addAffirmations(generatedTexts);
+        setInputText('');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '대화 생성에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '확언 생성에 실패했습니다.');
     } finally {
       setIsGenerating(false);
-      setGenerationProgress(null);
     }
   };
 
@@ -115,9 +79,9 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   };
 
-  // 재생 (연속 재생)
+  // 연속 재생
   const handlePlay = useCallback(async () => {
-    if (dialogues.length === 0) return;
+    if (affirmations.length === 0) return;
 
     // 일시정지 상태면 재개
     if (playbackStatus === 'paused') {
@@ -135,7 +99,6 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
 
     setPlaybackStatus('playing');
-    setCurrentLineIndex(0);
     setError(null);
     isPlayingRef.current = true;
 
@@ -145,20 +108,15 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         voiceSettings,
       });
 
-      const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
+      // 현재 확언부터 끝까지 연속 재생
+      let idx = currentIndex;
 
-      // 현재 대화부터 끝까지 연속 재생
-      let currentIndex = currentDialogueIndex;
-
-      while (isPlayingRef.current && currentIndex < dialogues.length) {
-        const dialogue = dialogues[currentIndex];
+      while (isPlayingRef.current && idx < affirmations.length) {
+        const affirmation = affirmations[idx];
 
         await new Promise<void>((resolve, reject) => {
-          speakDialogue(dialogue.lines, {
+          speakText(affirmation.text, {
             settings: voiceSettings,
-            speakerVoiceMap,
-            loop: false,
-            onLineStart: (index) => setCurrentLineIndex(index),
             onComplete: () => resolve(),
             onError: (err) => reject(err),
           });
@@ -166,13 +124,12 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
         if (!isPlayingRef.current) break;
 
-        // 다음 대화로 이동
-        const hasNext = advanceToNextDialogue();
+        // 다음 확언으로 이동
+        const hasNext = advanceToNext();
         if (!hasNext) {
-          // 마지막 대화 완료
           break;
         }
-        currentIndex++;
+        idx++;
       }
 
       resetPlayback();
@@ -185,17 +142,15 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
       isPlayingRef.current = false;
     }
   }, [
-    dialogues,
-    currentDialogueIndex,
+    affirmations,
+    currentIndex,
     playbackStatus,
     voiceSettings,
     ttsProvider.activeProvider,
     hasTTSApiKey,
     getActiveApiKey,
-    getSpeakerVoiceMap,
     setPlaybackStatus,
-    setCurrentLineIndex,
-    advanceToNextDialogue,
+    advanceToNext,
     resetPlayback,
   ]);
 
@@ -210,45 +165,43 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     resetPlayback();
   }, [resetPlayback]);
 
-  // 대화 선택
-  const handleSelectDialogue = useCallback(
+  // 확언 선택
+  const handleSelect = useCallback(
     (index: number) => {
       if (playbackStatus !== 'idle') {
         handleStop();
       }
-      setCurrentDialogue(index);
+      setCurrentIndex(index);
     },
-    [playbackStatus, handleStop, setCurrentDialogue]
+    [playbackStatus, handleStop, setCurrentIndex]
   );
 
-  // 대화 삭제
-  const handleDeleteDialogue = useCallback(
+  // 확언 삭제
+  const handleDelete = useCallback(
     (id: string) => {
-      const deletingIndex = dialogues.findIndex((d) => d.id === id);
+      const deletingIndex = affirmations.findIndex((a) => a.id === id);
       const isPlayingDeleted =
-        deletingIndex === currentDialogueIndex && playbackStatus !== 'idle';
+        deletingIndex === currentIndex && playbackStatus !== 'idle';
 
       if (isPlayingDeleted) {
         handleStop();
       }
 
-      deleteDialogue(id);
+      deleteAffirmation(id);
     },
-    [dialogues, currentDialogueIndex, playbackStatus, handleStop, deleteDialogue]
+    [affirmations, currentIndex, playbackStatus, handleStop, deleteAffirmation]
   );
 
-  // 빈 상태 UI (검색 사이트 스타일)
+  // 빈 상태 UI
   if (isEmpty && !isGenerating) {
     return (
       <div className="home-page home-page--empty">
-        {/* Background Effects */}
         <div className="home-page__bg" aria-hidden="true">
           <div className="home-page__orb home-page__orb--1" />
           <div className="home-page__orb home-page__orb--2" />
           <div className="home-page__orb home-page__orb--3" />
         </div>
 
-        {/* Settings Button */}
         <button
           type="button"
           className="home-page__settings-btn home-page__settings-btn--corner"
@@ -261,34 +214,33 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           </svg>
         </button>
 
-        {/* Centered Content */}
         <div className="home-page__center">
           <div className="home-page__brand">
             <h1 className="home-page__logo">Belief Changer</h1>
-            <p className="home-page__tagline">당신의 확언을 대화로 바꿔드립니다</p>
+            <p className="home-page__tagline">당신의 확언을 다양하게 변형해드립니다</p>
           </div>
 
           <div className="home-page__search-box">
             <Input
-              placeholder="확언을 입력하세요... 예: 나는 매일 운동을 즐긴다"
-              value={affirmationText}
-              onChange={(e) => setAffirmationText(e.target.value)}
+              placeholder="확언을 입력하세요... 예: 나는 소중하다"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               fullWidth
               className="home-page__search-input"
             />
 
             <div className="home-page__count-selector">
-              <span className="home-page__count-label">대화 개수</span>
+              <span className="home-page__count-label">변형 개수</span>
               <div className="home-page__count-buttons">
-                {[1, 2, 3, 5, 10].map((count) => (
+                {[1, 2, 3, 5, 10].map((n) => (
                   <button
-                    key={count}
+                    key={n}
                     type="button"
-                    className={`home-page__count-btn ${dialogueCount === count ? 'home-page__count-btn--active' : ''}`}
-                    onClick={() => setDialogueCount(count)}
+                    className={`home-page__count-btn ${count === n ? 'home-page__count-btn--active' : ''}`}
+                    onClick={() => setCount(n)}
                   >
-                    {count}
+                    {n}
                   </button>
                 ))}
               </div>
@@ -299,15 +251,15 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
               size="lg"
               fullWidth
               onClick={handleGenerate}
-              disabled={!affirmationText.trim() || !hasApiKey()}
+              disabled={!inputText.trim() || !hasApiKey()}
               isLoading={isGenerating}
             >
-              대화 생성하기
+              확언 생성하기
             </Button>
 
             {!hasApiKey() && (
               <p className="home-page__api-hint">
-                대화 생성을 위해{' '}
+                확언 생성을 위해{' '}
                 <button type="button" className="home-page__link" onClick={onNavigateToSettings}>
                   설정
                 </button>
@@ -337,13 +289,11 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   // 플레이리스트 모드 UI
   return (
     <div className="home-page home-page--playlist">
-      {/* Background Effects */}
       <div className="home-page__bg" aria-hidden="true">
         <div className="home-page__orb home-page__orb--1" />
         <div className="home-page__orb home-page__orb--2" />
       </div>
 
-      {/* Settings Button */}
       <button
         type="button"
         className="home-page__settings-btn home-page__settings-btn--corner"
@@ -356,27 +306,25 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         </svg>
       </button>
 
-      {/* Main Content */}
       <div className="home-page__container">
-        {/* Input Section */}
         <section className="home-page__input-section">
           <div className="home-page__input-row">
             <Input
               placeholder="새 확언 입력..."
-              value={affirmationText}
-              onChange={(e) => setAffirmationText(e.target.value)}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               fullWidth
             />
             <div className="home-page__count-compact">
               <select
-                value={dialogueCount}
-                onChange={(e) => setDialogueCount(Number(e.target.value))}
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
                 className="home-page__count-select"
               >
-                {[1, 2, 3, 5, 10].map((count) => (
-                  <option key={count} value={count}>
-                    {count}개
+                {[1, 2, 3, 5, 10].map((n) => (
+                  <option key={n} value={n}>
+                    {n}개
                   </option>
                 ))}
               </select>
@@ -384,33 +332,14 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
             <Button
               variant="primary"
               onClick={handleGenerate}
-              disabled={!affirmationText.trim() || !hasApiKey() || isGenerating}
+              disabled={!inputText.trim() || !hasApiKey() || isGenerating}
               isLoading={isGenerating}
             >
               생성
             </Button>
           </div>
-
-          {/* 생성 진행률 */}
-          {generationProgress && (
-            <div className="home-page__progress">
-              <div className="home-page__progress-bar">
-                <div
-                  className="home-page__progress-fill"
-                  style={{
-                    width: `${((generationProgress.completed + generationProgress.failed) / generationProgress.total) * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="home-page__progress-text">
-                {generationProgress.completed}/{generationProgress.total} 생성 완료
-                {generationProgress.failed > 0 && ` (${generationProgress.failed} 실패)`}
-              </span>
-            </div>
-          )}
         </section>
 
-        {/* Error Message */}
         {error && (
           <div className="home-page__error" role="alert">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -433,14 +362,13 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           </div>
         )}
 
-        {/* Playlist Panel */}
         <PlaylistPanel
-          dialogues={dialogues}
-          currentIndex={currentDialogueIndex}
+          affirmations={affirmations}
+          currentIndex={currentIndex}
           playbackStatus={playbackStatus}
-          onSelect={handleSelectDialogue}
-          onDelete={handleDeleteDialogue}
-          onReorder={reorderDialogues}
+          onSelect={handleSelect}
+          onDelete={handleDelete}
+          onReorder={reorder}
           onPlay={handlePlay}
           onPause={handlePause}
           onStop={handleStop}

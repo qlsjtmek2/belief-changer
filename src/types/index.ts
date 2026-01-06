@@ -1,17 +1,7 @@
-// === Dialogue (대화 스크립트) ===
-export interface DialogueLine {
+// === Affirmation (확언) ===
+export interface Affirmation {
   id: string;
-  speaker: string;
-  text: string;
-}
-
-// Gemini API에서 반환하는 원본 형식 (id 없음)
-export type RawDialogueLine = Omit<DialogueLine, 'id'>;
-
-export interface Dialogue {
-  id: string;
-  sourceAffirmation: string; // 생성에 사용된 확언 텍스트
-  lines: DialogueLine[];
+  text: string;       // 변형된 확언 텍스트
   createdAt: number;
 }
 
