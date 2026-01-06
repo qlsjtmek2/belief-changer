@@ -3,6 +3,7 @@
 .settings-page {
   min-height: 100vh;
   padding: var(--spacing-6);
+  padding-bottom: 80px; /* PlayerBar 공간 */
 }
 
 /* Header */

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Affirmation, PlaybackStatus } from '../types';
 import './PlaylistPanel.css';
 
@@ -8,10 +8,8 @@ interface PlaylistPanelProps {
   playbackStatus: PlaybackStatus;
   onSelect: (index: number) => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, text: string) => void;
   onReorder: (ids: string[]) => void;
-  onPlay: () => void;
-  onPause: () => void;
-  onStop: () => void;
 }
 
 export function PlaylistPanel({
@@ -20,13 +18,77 @@ export function PlaylistPanel({
   playbackStatus,
   onSelect,
   onDelete,
+  onUpdate,
   onReorder,
-  onPlay,
-  onPause,
-  onStop,
 }: PlaylistPanelProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
+  const editInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<HTMLDivElement>(null);
+  const prevIdsRef = useRef<Set<string>>(new Set());
+
+  // 새로 추가된 아이템 추적
+  useEffect(() => {
+    const currentIds = new Set(affirmations.map(a => a.id));
+    const newIds = new Set<string>();
+
+    // 이전에 없던 아이템 찾기
+    currentIds.forEach(id => {
+      if (!prevIdsRef.current.has(id)) {
+        newIds.add(id);
+      }
+    });
+
+    // 이전 ID 목록 업데이트
+    prevIdsRef.current = currentIds;
+
+    if (newIds.size > 0) {
+      setNewItemIds(newIds);
+      // 애니메이션 후 클래스 제거
+      const timer = setTimeout(() => {
+        setNewItemIds(new Set());
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [affirmations]);
+
+  // 편집 모드 시 input에 포커스
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleDoubleClick = (affirmation: Affirmation) => {
+    if (playbackStatus === 'playing') return; // 재생 중에는 편집 불가
+    setEditingId(affirmation.id);
+    setEditText(affirmation.text);
+  };
+
+  const handleEditSave = () => {
+    if (editingId && editText.trim()) {
+      onUpdate(editingId, editText.trim());
+    }
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleEditSave();
+    } else if (e.key === 'Escape') {
+      handleEditCancel();
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -72,53 +134,15 @@ export function PlaylistPanel({
     setDragOverIndex(null);
   };
 
-  const handlePlayPause = () => {
-    if (playbackStatus === 'playing') {
-      onPause();
-    } else {
-      onPlay();
-    }
-  };
-
   if (affirmations.length === 0) {
     return null;
   }
 
   return (
     <div className="playlist-panel" ref={dragRef}>
-      {/* 재생 컨트롤 */}
-      <div className="playlist-controls">
-        <button
-          className={`playlist-control-btn playlist-control-btn--play ${
-            playbackStatus === 'playing' ? 'playlist-control-btn--active' : ''
-          }`}
-          onClick={handlePlayPause}
-          aria-label={playbackStatus === 'playing' ? '일시정지' : '재생'}
-        >
-          {playbackStatus === 'playing' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-        </button>
-        <button
-          className="playlist-control-btn"
-          onClick={onStop}
-          disabled={playbackStatus === 'idle'}
-          aria-label="정지"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="6" y="6" width="12" height="12" rx="1" />
-          </svg>
-        </button>
-        <span className="playlist-info">
-          {affirmations.length}개 확언
-        </span>
+      {/* 헤더 */}
+      <div className="playlist-header">
+        <span className="playlist-info">{affirmations.length}개 확언</span>
       </div>
 
       {/* 확언 목록 */}
@@ -128,14 +152,17 @@ export function PlaylistPanel({
             key={affirmation.id}
             className={`playlist-item ${
               index === currentIndex ? 'playlist-item--current' : ''
-            } ${dragOverIndex === index ? 'playlist-item--drag-over' : ''}`}
-            draggable
+            } ${dragOverIndex === index ? 'playlist-item--drag-over' : ''} ${
+              editingId === affirmation.id ? 'playlist-item--editing' : ''
+            } ${newItemIds.has(affirmation.id) ? 'playlist-item--new' : ''}`}
+            draggable={editingId !== affirmation.id}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, index)}
-            onClick={() => onSelect(index)}
+            onClick={() => editingId !== affirmation.id && onSelect(index)}
+            onDoubleClick={() => handleDoubleClick(affirmation)}
           >
             {/* 드래그 핸들 */}
             <div className="playlist-item__handle" aria-label="드래그하여 순서 변경">
@@ -149,11 +176,24 @@ export function PlaylistPanel({
               </svg>
             </div>
 
-            {/* 확언 텍스트 */}
+            {/* 확언 텍스트 / 편집 모드 */}
             <div className="playlist-item__content">
-              <span className="playlist-item__text">
-                {affirmation.text}
-              </span>
+              {editingId === affirmation.id ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  className="playlist-item__edit-input"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
+                  onBlur={handleEditSave}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="playlist-item__text">
+                  {affirmation.text}
+                </span>
+              )}
             </div>
 
             {/* 재생 중 표시 */}

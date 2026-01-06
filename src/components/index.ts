@@ -9,3 +9,5 @@ export { Input } from './Input';
 export type { InputProps, TextareaProps } from './Input';
 
 export { PlaylistPanel } from './PlaylistPanel';
+
+export { PlayerBar } from './PlayerBar';

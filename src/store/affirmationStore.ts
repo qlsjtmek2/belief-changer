@@ -9,6 +9,7 @@ interface AffirmationState {
 
   // Actions
   addAffirmations: (texts: string[]) => Affirmation[];
+  updateAffirmation: (id: string, text: string) => void;
   deleteAffirmation: (id: string) => void;
   clearAll: () => void;
   reorder: (ids: string[]) => void;
@@ -40,6 +41,14 @@ export const useAffirmationStore = create<AffirmationState>()(
           affirmations: [...state.affirmations, ...newAffirmations],
         }));
         return newAffirmations;
+      },
+
+      updateAffirmation: (id: string, text: string) => {
+        set((state) => ({
+          affirmations: state.affirmations.map((a) =>
+            a.id === id ? { ...a, text } : a
+          ),
+        }));
       },
 
       deleteAffirmation: (id: string) => {

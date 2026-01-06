@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
-import { Button, Input, PlaylistPanel } from '../components';
+import { useState, useCallback, useEffect } from 'react';
+import { Input, PlaylistPanel } from '../components';
 import { useAffirmationStore, useSettingsStore } from '../store';
-import { generateAffirmations, speakText, pause, resume, stop, ttsManager } from '../services';
+import { generateAffirmations, stop } from '../services';
 import './HomePage.css';
 
 interface HomePageProps {
@@ -13,7 +13,6 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   const [count, setCount] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isPlayingRef = useRef(false);
 
   // Stores
   const {
@@ -21,26 +20,42 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     currentIndex,
     playbackStatus,
     addAffirmations,
+    updateAffirmation,
     deleteAffirmation,
     reorder,
     setCurrentIndex,
-    advanceToNext,
-    setPlaybackStatus,
     resetPlayback,
   } = useAffirmationStore();
 
   const {
     geminiApiKey,
     userName,
-    voiceSettings,
-    ttsProvider,
     geminiSettings,
     hasApiKey,
-    getActiveApiKey,
-    hasTTSApiKey,
   } = useSettingsStore();
 
   const isEmpty = affirmations.length === 0;
+  const showEmptyState = isEmpty && !isGenerating;
+
+  // 전환 애니메이션 상태
+  const [shouldShowPlaylist, setShouldShowPlaylist] = useState(!isEmpty);
+  const [isExiting, setIsExiting] = useState(false);
+
+  // 전환 효과 관리
+  useEffect(() => {
+    if (!showEmptyState && !shouldShowPlaylist) {
+      // 빈 상태 → 플레이리스트: 즉시 표시
+      setShouldShowPlaylist(true);
+    } else if (showEmptyState && shouldShowPlaylist) {
+      // 플레이리스트 → 빈 상태: exit 애니메이션 후 제거
+      setIsExiting(true);
+      const timer = setTimeout(() => {
+        setShouldShowPlaylist(false);
+        setIsExiting(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showEmptyState, shouldShowPlaylist]);
 
   // 확언 변형 생성
   const handleGenerate = async () => {
@@ -79,101 +94,16 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   };
 
-  // 연속 재생
-  const handlePlay = useCallback(async () => {
-    if (affirmations.length === 0) return;
-
-    // 일시정지 상태면 재개
-    if (playbackStatus === 'paused') {
-      resume();
-      setPlaybackStatus('playing');
-      return;
-    }
-
-    // TTS API 키 확인 (WebSpeech 제외)
-    if (!hasTTSApiKey()) {
-      setError(
-        `${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`
-      );
-      return;
-    }
-
-    setPlaybackStatus('playing');
-    setError(null);
-    isPlayingRef.current = true;
-
-    try {
-      await ttsManager.setProvider(ttsProvider.activeProvider, {
-        apiKey: getActiveApiKey(),
-        voiceSettings,
-      });
-
-      // 현재 확언부터 끝까지 연속 재생
-      let idx = currentIndex;
-
-      while (isPlayingRef.current && idx < affirmations.length) {
-        const affirmation = affirmations[idx];
-
-        await new Promise<void>((resolve, reject) => {
-          speakText(affirmation.text, {
-            settings: voiceSettings,
-            onComplete: () => resolve(),
-            onError: (err) => reject(err),
-          });
-        });
-
-        if (!isPlayingRef.current) break;
-
-        // 다음 확언으로 이동
-        const hasNext = advanceToNext();
-        if (!hasNext) {
-          break;
-        }
-        idx++;
-      }
-
-      resetPlayback();
-    } catch (err) {
-      if (isPlayingRef.current) {
-        setError(err instanceof Error ? err.message : 'TTS 재생에 실패했습니다.');
-      }
-      resetPlayback();
-    } finally {
-      isPlayingRef.current = false;
-    }
-  }, [
-    affirmations,
-    currentIndex,
-    playbackStatus,
-    voiceSettings,
-    ttsProvider.activeProvider,
-    hasTTSApiKey,
-    getActiveApiKey,
-    setPlaybackStatus,
-    advanceToNext,
-    resetPlayback,
-  ]);
-
-  const handlePause = useCallback(() => {
-    pause();
-    setPlaybackStatus('paused');
-  }, [setPlaybackStatus]);
-
-  const handleStop = useCallback(() => {
-    isPlayingRef.current = false;
-    stop();
-    resetPlayback();
-  }, [resetPlayback]);
-
   // 확언 선택
   const handleSelect = useCallback(
     (index: number) => {
       if (playbackStatus !== 'idle') {
-        handleStop();
+        stop();
+        resetPlayback();
       }
       setCurrentIndex(index);
     },
-    [playbackStatus, handleStop, setCurrentIndex]
+    [playbackStatus, setCurrentIndex, resetPlayback]
   );
 
   // 확언 삭제
@@ -184,114 +114,37 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         deletingIndex === currentIndex && playbackStatus !== 'idle';
 
       if (isPlayingDeleted) {
-        handleStop();
+        stop();
+        resetPlayback();
       }
 
       deleteAffirmation(id);
     },
-    [affirmations, currentIndex, playbackStatus, handleStop, deleteAffirmation]
+    [affirmations, currentIndex, playbackStatus, deleteAffirmation, resetPlayback]
   );
 
-  // 빈 상태 UI
-  if (isEmpty && !isGenerating) {
-    return (
-      <div className="home-page home-page--empty">
-        <div className="home-page__bg" aria-hidden="true">
-          <div className="home-page__orb home-page__orb--1" />
-          <div className="home-page__orb home-page__orb--2" />
-          <div className="home-page__orb home-page__orb--3" />
-        </div>
+  // CSS 클래스 결정
+  const pageClasses = [
+    'home-page',
+    showEmptyState ? 'home-page--empty' : 'home-page--playlist',
+  ].join(' ');
 
-        <button
-          type="button"
-          className="home-page__settings-btn home-page__settings-btn--corner"
-          onClick={onNavigateToSettings}
-          aria-label="설정"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-          </svg>
-        </button>
+  const brandClasses = [
+    'home-page__brand',
+    !showEmptyState && 'home-page__brand--hidden',
+  ].filter(Boolean).join(' ');
 
-        <div className="home-page__center">
-          <div className="home-page__brand">
-            <h1 className="home-page__logo">Belief Changer</h1>
-            <p className="home-page__tagline">당신의 확언을 다양하게 변형해드립니다</p>
-          </div>
+  const playlistAreaClasses = [
+    'home-page__playlist-area',
+    isExiting && 'home-page__playlist-area--exiting',
+  ].filter(Boolean).join(' ');
 
-          <div className="home-page__search-box">
-            <Input
-              placeholder="확언을 입력하세요... 예: 나는 소중하다"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              fullWidth
-              className="home-page__search-input"
-            />
-
-            <div className="home-page__count-selector">
-              <span className="home-page__count-label">변형 개수</span>
-              <div className="home-page__count-buttons">
-                {[1, 2, 3, 5, 10].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`home-page__count-btn ${count === n ? 'home-page__count-btn--active' : ''}`}
-                    onClick={() => setCount(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleGenerate}
-              disabled={!inputText.trim() || !hasApiKey()}
-              isLoading={isGenerating}
-            >
-              확언 생성하기
-            </Button>
-
-            {!hasApiKey() && (
-              <p className="home-page__api-hint">
-                확언 생성을 위해{' '}
-                <button type="button" className="home-page__link" onClick={onNavigateToSettings}>
-                  설정
-                </button>
-                에서 API 키를 입력해주세요.
-              </p>
-            )}
-          </div>
-
-          {error && (
-            <div className="home-page__error home-page__error--centered" role="alert">
-              <span>{error}</span>
-              <button
-                type="button"
-                className="home-page__error-close"
-                onClick={() => setError(null)}
-                aria-label="닫기"
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 플레이리스트 모드 UI
   return (
-    <div className="home-page home-page--playlist">
+    <div className={pageClasses}>
       <div className="home-page__bg" aria-hidden="true">
         <div className="home-page__orb home-page__orb--1" />
         <div className="home-page__orb home-page__orb--2" />
+        {showEmptyState && <div className="home-page__orb home-page__orb--3" />}
       </div>
 
       <button
@@ -300,46 +153,76 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         onClick={onNavigateToSettings}
         aria-label="설정"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
         </svg>
       </button>
 
-      <div className="home-page__container">
-        <section className="home-page__input-section">
-          <div className="home-page__input-row">
-            <Input
-              placeholder="새 확언 입력..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              fullWidth
-            />
-            <div className="home-page__count-compact">
-              <select
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                className="home-page__count-select"
-              >
-                {[1, 2, 3, 5, 10].map((n) => (
-                  <option key={n} value={n}>
-                    {n}개
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              variant="primary"
-              onClick={handleGenerate}
-              disabled={!inputText.trim() || !hasApiKey() || isGenerating}
-              isLoading={isGenerating}
-            >
-              생성
-            </Button>
-          </div>
-        </section>
+      <div className="home-page__center">
+        {/* 브랜드 - 빈 상태에서만 표시 */}
+        <div className={brandClasses}>
+          <h1 className="home-page__logo">Belief Changer</h1>
+          <p className="home-page__tagline">당신의 확언을 TTS로 반복 재생해드립니다</p>
+        </div>
 
+        {/* 입력창 - 항상 표시 */}
+        <div className="home-page__search-box">
+          <Input
+            placeholder="확언을 입력하세요... 예: 나는 소중하다"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            fullWidth
+            className="home-page__search-input"
+            suffix={
+              <button
+                type="button"
+                className="home-page__add-btn"
+                onClick={handleGenerate}
+                disabled={!inputText.trim() || !hasApiKey() || isGenerating}
+                aria-label="확언 생성"
+              >
+                {isGenerating ? (
+                  <span className="home-page__add-btn-spinner" />
+                ) : (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                )}
+              </button>
+            }
+          />
+
+          <div className="home-page__count-selector">
+            <span className="home-page__count-label">생성 개수</span>
+            <div className="home-page__count-buttons">
+              {[1, 2, 3, 5, 10].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`home-page__count-btn ${count === n ? 'home-page__count-btn--active' : ''}`}
+                  onClick={() => setCount(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!hasApiKey() && (
+            <p className="home-page__api-hint">
+              확언 생성을 위해{' '}
+              <button type="button" className="home-page__link" onClick={onNavigateToSettings}>
+                설정
+              </button>
+              에서 API 키를 입력해주세요.
+            </p>
+          )}
+        </div>
+
+        {/* 에러 메시지 */}
         {error && (
           <div className="home-page__error" role="alert">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -352,7 +235,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
               type="button"
               className="home-page__error-close"
               onClick={() => setError(null)}
-              aria-label="에러 닫기"
+              aria-label="닫기"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -362,17 +245,20 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           </div>
         )}
 
-        <PlaylistPanel
-          affirmations={affirmations}
-          currentIndex={currentIndex}
-          playbackStatus={playbackStatus}
-          onSelect={handleSelect}
-          onDelete={handleDelete}
-          onReorder={reorder}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onStop={handleStop}
-        />
+        {/* 플레이리스트 - 확언이 있을 때만 표시 */}
+        {shouldShowPlaylist && (
+          <div className={playlistAreaClasses}>
+            <PlaylistPanel
+              affirmations={affirmations}
+              currentIndex={currentIndex}
+              playbackStatus={playbackStatus}
+              onSelect={handleSelect}
+              onDelete={handleDelete}
+              onUpdate={updateAffirmation}
+              onReorder={reorder}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

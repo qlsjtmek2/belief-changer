@@ -7,6 +7,7 @@ interface BaseInputProps {
   error?: string;
   hint?: string;
   fullWidth?: boolean;
+  suffix?: React.ReactNode;
 }
 
 export interface InputProps
@@ -32,6 +33,7 @@ export const Input = forwardRef<
     error,
     hint,
     fullWidth = false,
+    suffix,
     className = '',
     multiline,
     id,
@@ -50,9 +52,34 @@ export const Input = forwardRef<
     .filter(Boolean)
     .join(' ');
 
-  const inputClasses = ['input', multiline && 'input--multiline']
+  const inputClasses = ['input', multiline && 'input--multiline', suffix && 'input--with-suffix']
     .filter(Boolean)
     .join(' ');
+
+  const renderInput = () => {
+    if (multiline) {
+      return (
+        <textarea
+          ref={ref as React.Ref<HTMLTextAreaElement>}
+          id={inputId}
+          className={inputClasses}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+          {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
+        />
+      );
+    }
+    return (
+      <input
+        ref={ref as React.Ref<HTMLInputElement>}
+        id={inputId}
+        className={inputClasses}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+        {...(rest as InputHTMLAttributes<HTMLInputElement>)}
+      />
+    );
+  };
 
   return (
     <div className={wrapperClasses}>
@@ -62,24 +89,13 @@ export const Input = forwardRef<
         </label>
       )}
 
-      {multiline ? (
-        <textarea
-          ref={ref as React.Ref<HTMLTextAreaElement>}
-          id={inputId}
-          className={inputClasses}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
-          {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
-        />
+      {suffix ? (
+        <div className="input__field-wrapper">
+          {renderInput()}
+          <div className="input__suffix">{suffix}</div>
+        </div>
       ) : (
-        <input
-          ref={ref as React.Ref<HTMLInputElement>}
-          id={inputId}
-          className={inputClasses}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
-          {...(rest as InputHTMLAttributes<HTMLInputElement>)}
-        />
+        renderInput()
       )}
 
       {error && (
