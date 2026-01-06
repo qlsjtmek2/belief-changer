@@ -113,6 +113,11 @@ export abstract class BaseHTTPProvider implements TTSProvider {
 
       this.audio = new Audio(url);
 
+      // 볼륨 설정 적용
+      if (options.settings?.volume !== undefined) {
+        this.audio.volume = Math.max(0, Math.min(1, options.settings.volume));
+      }
+
       this.audio.onplay = () => {
         this.isPlaying = true;
         this.isPaused = false;
