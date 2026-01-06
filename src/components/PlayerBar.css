@@ -89,23 +89,17 @@
   max-width: 100%;
 }
 
-/* 재생 중 텍스트 효과 - Marquee 스크롤 */
-.player-bar__info--playing {
-  justify-content: flex-start;
-}
-
+/* 재생 중 텍스트 효과 - Marquee 스크롤 (정렬 유지) */
 .player-bar__info--playing .player-bar__text {
-  overflow: visible;
-  max-width: none;
   animation: textMarquee 6s ease-in-out infinite;
 }
 
 @keyframes textMarquee {
-  0%, 15% {
+  0%, 20% {
     transform: translateX(0);
   }
-  85%, 100% {
-    transform: translateX(calc(-100% + 200px));
+  80%, 100% {
+    transform: translateX(-20%);
   }
 }
 
