@@ -26,18 +26,18 @@
 
 > **활성화 해야 할 스킬**: 없음 (기본 TypeScript/Zustand 패턴 사용)
 
-- [ ] 타입 정의 (Affirmation, Dialogue, Settings)
-- [ ] affirmationStore 구현 (확언 CRUD, localStorage persist)
-- [ ] dialogueStore 구현 (대화 생성/저장/재생 상태)
-- [ ] settingsStore 구현 (API 키, 음성 설정)
+- [x] 타입 정의 (Affirmation, Dialogue, Settings)
+- [x] affirmationStore 구현 (확언 CRUD, localStorage persist)
+- [x] dialogueStore 구현 (대화 생성/저장/재생 상태)
+- [x] settingsStore 구현 (API 키, 음성 설정)
 
 ## Phase 3: Gemini API 연동
 
 > **활성화 해야 할 스킬**:
 > - `dev-toolkit:systematic-debugging` - API 연동 시 문제 해결
 
-- [ ] gemini.ts 서비스 구현 (API 호출, JSON Schema 출력)
-- [ ] 프롬프트 템플릿 작성 (자연스러운 대화 생성용)
+- [x] gemini.ts 서비스 구현 (API 호출, JSON Schema 출력)
+- [x] 프롬프트 템플릿 작성 (자연스러운 대화 생성용)
 
 ## Phase 4: TTS 서비스
 
