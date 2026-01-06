@@ -137,11 +137,17 @@ export abstract class BaseHTTPProvider implements TTSProvider {
         reject(error);
       };
 
-      this.audio.play().catch((error) => {
-        this.isPlaying = false;
-        options.onError?.(error);
-        reject(error);
-      });
+      // 오디오가 충분히 버퍼링된 후 재생 (앞부분 씹힘 방지)
+      this.audio.oncanplaythrough = () => {
+        this.audio?.play().catch((error) => {
+          this.isPlaying = false;
+          options.onError?.(error);
+          reject(error);
+        });
+      };
+
+      // 로딩 시작
+      this.audio.load();
     });
   }
 
