@@ -11,6 +11,8 @@ export interface Voice {
 // === 상태 관리 ===
 let isPlaying = false;
 let isPaused = false;
+let shouldStop = false;
+let isLooping = false;
 
 // === 음성 목록 가져오기 ===
 
@@ -66,8 +68,8 @@ export interface SpeakOptions {
  */
 export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
   return new Promise((resolve, reject) => {
-    // 이전 발화 중지
-    stop();
+    // 이전 발화만 취소 (상태는 유지)
+    speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
 
@@ -108,6 +110,7 @@ export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
 
 export interface SpeakDialogueOptions {
   settings?: VoiceSettings;
+  loop?: boolean;
   onLineStart?: (index: number) => void;
   onLineEnd?: (index: number) => void;
   onComplete?: () => void;
@@ -116,6 +119,7 @@ export interface SpeakDialogueOptions {
 
 /**
  * 화자별로 다른 목소리를 할당하여 대화 스크립트를 순차 재생합니다.
+ * loop 옵션이 true면 무한 반복 재생합니다.
  */
 export async function speakDialogue(
   lines: DialogueLine[],
@@ -142,30 +146,45 @@ export async function speakDialogue(
     voiceMap.set(speaker, availableVoices[voiceIndex].native);
   });
 
-  // 순차 재생
-  for (let i = 0; i < lines.length; i++) {
-    // 중지 요청 확인
-    if (!isPlaying && i > 0) {
-      break;
+  // 상태 초기화
+  isPlaying = true;
+  shouldStop = false;
+  isLooping = options.loop ?? true; // 기본값: 반복 재생
+
+  // 반복 재생 루프
+  do {
+    // 순차 재생
+    for (let i = 0; i < lines.length; i++) {
+      // 중지 요청 확인
+      if (shouldStop) {
+        isPlaying = false;
+        return;
+      }
+
+      const line = lines[i];
+      const voice = voiceMap.get(line.speaker);
+
+      options.onLineStart?.(i);
+
+      try {
+        await speak(line.text, {
+          voice,
+          settings: options.settings,
+        });
+        options.onLineEnd?.(i);
+      } catch (error) {
+        // 중지로 인한 에러는 무시
+        if (shouldStop) {
+          isPlaying = false;
+          return;
+        }
+        options.onError?.(error as Error);
+        throw error;
+      }
     }
+  } while (isLooping && !shouldStop);
 
-    const line = lines[i];
-    const voice = voiceMap.get(line.speaker);
-
-    options.onLineStart?.(i);
-
-    try {
-      await speak(line.text, {
-        voice,
-        settings: options.settings,
-      });
-      options.onLineEnd?.(i);
-    } catch (error) {
-      options.onError?.(error as Error);
-      throw error;
-    }
-  }
-
+  isPlaying = false;
   options.onComplete?.();
 }
 
@@ -195,6 +214,8 @@ export function resume(): void {
  * 현재 재생을 중지합니다.
  */
 export function stop(): void {
+  shouldStop = true;
+  isLooping = false;
   speechSynthesis.cancel();
   isPlaying = false;
   isPaused = false;
