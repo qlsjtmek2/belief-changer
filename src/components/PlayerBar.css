@@ -71,12 +71,14 @@
   transform: scale(0.92);
 }
 
-/* 현재 재생 정보 */
+/* 현재 재생 정보 - 버튼/트랙 영역 사이에서 정확히 중앙 정렬 */
 .player-bar__info {
   flex: 1;
-  overflow: hidden;
+  min-width: 0; /* flexbox overflow 방지 */
   display: flex;
   justify-content: center;
+  align-items: center;
+  overflow: hidden;
   padding: 0 var(--spacing-md);
 }
 
@@ -85,27 +87,15 @@
   color: var(--color-text-primary);
   white-space: nowrap;
   text-align: center;
-  width: 100%;
-}
-
-/* 재생 중 텍스트 효과 - Marquee 스크롤 (정렬 유지) */
-.player-bar__info--playing .player-bar__text {
-  animation: textMarquee 12s linear infinite;
-}
-
-@keyframes textMarquee {
-  0%, 10% {
-    transform: translateX(0);
-  }
-  90%, 100% {
-    transform: translateX(-20%);
-  }
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 트랙 정보 */
 .player-bar__track {
   font-size: var(--font-size-xs);
-  color: var(--color-text-hint);
+  color: var(--color-text-secondary);
   width: 120px;
   flex-shrink: 0;
   text-align: right;
