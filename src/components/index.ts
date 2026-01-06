@@ -12,4 +12,4 @@ export { PlaylistPanel } from './PlaylistPanel';
 
 export { PlayerBar } from './PlayerBar';
 
-export { Toast } from './Toast';
+export { Toast, ToastContainer } from './Toast';

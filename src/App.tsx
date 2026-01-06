@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HomePage, SettingsPage } from './pages';
-import { PlayerBar } from './components';
+import { PlayerBar, ToastContainer } from './components';
 
 type Page = 'home' | 'settings';
 
@@ -15,6 +15,7 @@ function App() {
         <SettingsPage onBack={() => setCurrentPage('home')} />
       )}
       <PlayerBar />
+      <ToastContainer />
     </>
   );
 }

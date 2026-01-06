@@ -253,7 +253,12 @@
 .home-page__search-input input {
   font-size: var(--font-size-lg) !important;
   padding: var(--spacing-lg) !important;
-  padding-right: 56px !important;
+  padding-right: 72px !important; /* 버튼(44px) + 좌측여백(4px) + 우측여백(24px) */
+}
+
+/* 데스크탑에서 + 버튼 우측 여백을 입력 필드 패딩에 맞춤 */
+.home-page__search-input .input__suffix {
+  right: var(--spacing-lg);
 }
 
 /* Count Selector */
@@ -509,6 +514,11 @@
     font-size: var(--font-size-base) !important;
     padding: var(--spacing-md) !important;
     padding-right: 56px !important;
+  }
+
+  /* 모바일에서는 원래 여백 유지 */
+  .home-page__search-input .input__suffix {
+    right: var(--spacing-2);
   }
 }
 

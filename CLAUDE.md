@@ -54,7 +54,8 @@ src/
 │           └── OpenAITTSProvider.ts   # OpenAI TTS
 ├── store/           # Zustand 스토어
 │   ├── dialogueStore.ts     # 대화 및 재생 상태
-│   └── settingsStore.ts     # 사용자 설정 + TTS Provider 설정
+│   ├── settingsStore.ts     # 사용자 설정 + TTS Provider 설정
+│   └── toastStore.ts        # 전역 토스트 상태 관리
 ├── types/           # TypeScript 타입 정의
 │   └── index.ts             # Dialogue, Settings, TTSProviderType 등
 ├── utils/           # 유틸리티 함수
@@ -255,3 +256,31 @@ provider.getKoreanVoices()     // 한국어 음성 목록 (필터링된)
 - 에러: `home-page__error` 클래스 (아이콘 + 메시지 + 닫기 버튼)
 - 로딩: Button의 `isLoading` prop 또는 진행률 바
 - Empty State: 검색 사이트 스타일 중앙 정렬
+- 토스트: 전역 `toast` 함수 사용 (스택형, 최신이 아래에 표시)
+
+### 토스트 시스템
+
+전역 토스트 시스템으로 여러 메시지를 스택 형태로 표시합니다.
+
+```typescript
+import { toast } from '../store';
+
+// 성공 메시지 (기본 2.5초)
+toast.success('확언이 추가되었습니다');
+
+// 오류 메시지 (기본 4초)
+toast.error('API 키가 설정되지 않았습니다.');
+
+// 커스텀 duration
+toast.success('저장됨', 1500);
+```
+
+- `ToastContainer`가 App.tsx에 전역으로 마운트됨
+- 최신 토스트가 아래에, 이전 토스트는 위로 스택됨
+- 클릭하면 즉시 닫힘
+- 자동 퇴장 애니메이션 적용
+
+### TTS 재생 딜레이
+
+- 각 확언 재생 후 **1.5초** 딜레이 적용
+- 사용자가 숨 쉴 틈을 제공하여 자연스러운 청취 경험

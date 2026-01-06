@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Input, PlaylistPanel, Toast } from '../components';
-import { useAffirmationStore, useSettingsStore } from '../store';
+import { Input, PlaylistPanel } from '../components';
+import { useAffirmationStore, useSettingsStore, toast } from '../store';
 import { generateAffirmations, stop } from '../services';
 import './HomePage.css';
 
@@ -12,8 +12,6 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
 
   // Stores
   const {
@@ -72,8 +70,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     if (!aiGenerationEnabled) {
       addAffirmations([trimmed]);
       setInputText('');
-      setToastMessage('확언이 추가되었습니다');
-      setToastVisible(true);
+      toast.success('확언이 추가되었습니다');
       return;
     }
 
@@ -97,8 +94,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
       if (generatedTexts.length > 0) {
         addAffirmations(generatedTexts);
-        setToastMessage(`${generatedTexts.length}개의 확언이 추가되었습니다`);
-        setToastVisible(true);
+        toast.success(`${generatedTexts.length}개의 확언이 추가되었습니다`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '확언 생성에 실패했습니다.');
@@ -297,17 +293,6 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           </div>
         )}
       </div>
-
-      {/* 토스트 메시지 */}
-      <Toast
-        message={toastMessage || ''}
-        isVisible={toastVisible}
-        onClose={() => {
-          setToastVisible(false);
-          // 애니메이션(0.3s) 후 메시지 제거
-          setTimeout(() => setToastMessage(null), 300);
-        }}
-      />
     </div>
   );
 }

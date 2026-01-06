@@ -1,7 +1,30 @@
 import { useCallback, useRef, useEffect } from 'react';
-import { useAffirmationStore, useSettingsStore } from '../store';
+import { useAffirmationStore, useSettingsStore, toast } from '../store';
 import { speakText, pause, resume, stop, ttsManager } from '../services';
 import './PlayerBar.css';
+
+// 기술적 오류 메시지를 사용자 친화적으로 변환
+function formatErrorMessage(error: Error): string {
+  const msg = error.message;
+
+  if (msg.includes('quota_exceeded') || msg.includes('quota')) {
+    return '음성 API 할당량이 초과되었습니다. 설정에서 다른 TTS를 선택해주세요.';
+  }
+  if (msg.includes('401') || msg.includes('Unauthorized')) {
+    return 'API 키가 유효하지 않습니다.';
+  }
+  if (msg.includes('API 키가 설정되지')) {
+    return 'API 키가 설정되지 않았습니다. 설정에서 입력해주세요.';
+  }
+  if (msg.includes('429')) {
+    return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+  }
+  if (msg.includes('네트워크') || msg.includes('network') || msg.includes('fetch')) {
+    return '네트워크 연결을 확인해주세요.';
+  }
+
+  return '재생 중 오류가 발생했습니다.';
+}
 
 export function PlayerBar() {
   const {
@@ -51,6 +74,7 @@ export function PlayerBar() {
 
     // TTS API 키 확인 (WebSpeech 제외)
     if (!hasTTSApiKey()) {
+      toast.error('TTS API 키가 설정되지 않았습니다. 설정에서 입력해주세요.');
       return;
     }
 
@@ -84,6 +108,21 @@ export function PlayerBar() {
 
         if (!isPlayingRef.current) break;
 
+        // 다음 확언 재생 전 잠시 쉬기 (1.5초)
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 1500);
+          // 중지 시 즉시 해제
+          const checkStop = setInterval(() => {
+            if (!isPlayingRef.current) {
+              clearTimeout(timer);
+              clearInterval(checkStop);
+              resolve();
+            }
+          }, 100);
+        });
+
+        if (!isPlayingRef.current) break;
+
         const hasNext = advanceToNext();
         if (!hasNext) {
           // 마지막 항목이면 advanceToNext가 이미 currentIndex를 0으로 설정함
@@ -94,8 +133,9 @@ export function PlayerBar() {
       }
 
       resetPlayback();
-    } catch {
+    } catch (error) {
       resetPlayback();
+      toast.error(formatErrorMessage(error as Error));
     } finally {
       isPlayingRef.current = false;
     }
