@@ -253,6 +253,7 @@
 .home-page__search-input input {
   font-size: var(--font-size-lg) !important;
   padding: var(--spacing-lg) !important;
+  padding-right: 56px !important;
 }
 
 /* Count Selector */
@@ -507,6 +508,7 @@
   .home-page__search-input input {
     font-size: var(--font-size-base) !important;
     padding: var(--spacing-md) !important;
+    padding-right: 56px !important;
   }
 }
 
