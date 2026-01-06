@@ -3,6 +3,9 @@ import { useAffirmationStore, useSettingsStore, toast } from '../store';
 import { speakText, pause, resume, stop, ttsManager } from '../services';
 import './PlayerBar.css';
 
+// Media Session API 지원 여부 확인
+const isMediaSessionSupported = 'mediaSession' in navigator;
+
 // 기술적 오류 메시지를 사용자 친화적으로 변환
 function formatErrorMessage(error: Error): string {
   const msg = error.message;
@@ -177,6 +180,12 @@ export function PlayerBar() {
     setPlaybackStatus('paused');
   }, [setPlaybackStatus]);
 
+  // handlePause ref (Media Session에서 사용)
+  const handlePauseRef = useRef(handlePause);
+  useEffect(() => {
+    handlePauseRef.current = handlePause;
+  }, [handlePause]);
+
   // 이전
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
@@ -204,6 +213,58 @@ export function PlayerBar() {
       }
     }
   }, [currentIndex, affirmations.length, playbackStatus, setCurrentIndex, handlePlay]);
+
+  // handlePrev, handleNext ref (Media Session에서 사용)
+  const handlePrevRef = useRef(handlePrev);
+  const handleNextRef = useRef(handleNext);
+  useEffect(() => {
+    handlePrevRef.current = handlePrev;
+    handleNextRef.current = handleNext;
+  }, [handlePrev, handleNext]);
+
+  // Media Session API 설정 (백그라운드 재생 지원)
+  useEffect(() => {
+    if (!isMediaSessionSupported || affirmations.length === 0) return;
+
+    // 메타데이터 설정
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentAffirmation?.text || '확언',
+      artist: '믿음 변화기',
+      album: `${currentIndex + 1} / ${affirmations.length}`,
+    });
+
+    // 재생 상태 업데이트
+    navigator.mediaSession.playbackState =
+      playbackStatus === 'playing' ? 'playing' :
+      playbackStatus === 'paused' ? 'paused' : 'none';
+
+    // 액션 핸들러 등록
+    navigator.mediaSession.setActionHandler('play', () => {
+      handlePlayRef.current();
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      handlePauseRef.current();
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      handlePrevRef.current();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      handleNextRef.current();
+    });
+
+    // 정리
+    return () => {
+      if (isMediaSessionSupported) {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+      }
+    };
+  }, [affirmations.length, currentIndex, currentAffirmation?.text, playbackStatus]);
 
   // 확언이 없으면 렌더링하지 않음
   if (affirmations.length === 0) {
