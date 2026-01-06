@@ -184,16 +184,9 @@ export function PlayerBar() {
 
         {/* 가운데: 현재 재생 중인 확언 */}
         <div className="player-bar__info">
-          <span className="player-bar__text">
+          <span className={`player-bar__text ${playbackStatus === 'playing' ? 'player-bar__text--playing' : ''}`}>
             {currentAffirmation?.text || '확언을 선택하세요'}
           </span>
-          {playbackStatus === 'playing' && (
-            <div className="player-bar__wave" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          )}
         </div>
 
         {/* 오른쪽: 트랙 정보 */}
