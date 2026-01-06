@@ -159,12 +159,12 @@ export function PlayerBar() {
             aria-label={playbackStatus === 'playing' ? '일시정지' : '재생'}
           >
             {playbackStatus === 'playing' ? (
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="5" y="3" width="5" height="18" rx="1.5" />
                 <rect x="14" y="3" width="5" height="18" rx="1.5" />
               </svg>
             ) : (
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M6 3.5v17a1 1 0 001.5.87l14-8.5a1 1 0 000-1.74l-14-8.5A1 1 0 006 3.5z" />
               </svg>
             )}

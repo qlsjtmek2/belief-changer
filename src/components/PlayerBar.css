@@ -21,26 +21,27 @@
 .player-bar__controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 0;
   flex-shrink: 0;
+  margin-right: var(--spacing-md);
 }
 
 .player-bar__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
   background: transparent;
   border: none;
-  color: var(--color-text-hint);
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .player-bar__btn:hover:not(:disabled) {
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   transform: scale(1.1);
 }
 
@@ -49,15 +50,15 @@
 }
 
 .player-bar__btn:disabled {
-  opacity: 0.25;
+  opacity: 0.15;
   cursor: not-allowed;
 }
 
 /* 메인 재생 버튼 - 배경 없이 아이콘만 크게 */
 .player-bar__btn--play {
-  width: 56px;
-  height: 56px;
-  margin: 0 var(--spacing-xs);
+  width: 48px;
+  height: 48px;
+  margin: 0 2px;
   background: transparent;
   color: var(--color-text-primary);
 }
@@ -129,22 +130,26 @@
   }
 
   .player-bar__content {
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .player-bar__controls {
+    margin-right: var(--spacing-sm);
   }
 
   .player-bar__btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .player-bar__btn--play {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
   }
 
   .player-bar__btn--play svg {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
   }
 
   .player-bar__track {
