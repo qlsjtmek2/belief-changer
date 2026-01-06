@@ -64,7 +64,8 @@
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text-primary);
-  white-space: nowrap;
+  max-width: 280px;
+  word-break: keep-all;
 }
 
 /* 오류 스타일 */
