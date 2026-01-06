@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import './Input.css';
 
 interface BaseInputProps {
@@ -38,7 +38,8 @@ export const Input = forwardRef<
     ...rest
   } = props;
 
-  const inputId = id || `input-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = useId();
+  const inputId = id || generatedId;
 
   const wrapperClasses = [
     'input-wrapper',

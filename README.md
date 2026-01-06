@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# Belief Changer (믿음 변화기)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+사용자가 입력한 확언(affirmation)을 여러 사람의 대화로 변환하여 TTS로 들려주는 웹 앱입니다.
 
-Currently, two official plugins are available:
+## 핵심 기능
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 확언 입력 및 관리
+- Gemini AI를 활용한 대화 스크립트 생성
+- Web Speech API를 통한 TTS 재생
 
-## React Compiler
+## 기술 스택
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| 분류 | 기술 |
+|------|------|
+| Frontend | React 19 + TypeScript + Vite |
+| 상태관리 | Zustand |
+| AI | Gemini API |
+| TTS | Web Speech API |
+| 스타일 | 커스텀 CSS (다크 테마) |
 
-## Expanding the ESLint configuration
+## 시작하기
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 요구사항
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 20+
+- npm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 설치 및 실행
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+개발 서버: http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 스크립트
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev        # 개발 서버 실행
+npm run build      # 프로덕션 빌드
+npm run preview    # 빌드 결과 미리보기
+npm run lint       # ESLint 실행
+npm run type-check # TypeScript 타입 검사
 ```
+
+## 프로젝트 구조
+
+```
+src/
+├── components/     # 재사용 가능한 UI 컴포넌트
+├── pages/          # 페이지 컴포넌트
+├── services/       # 외부 API 연동 (Gemini, TTS)
+├── store/          # Zustand 상태 관리
+├── types/          # TypeScript 타입 정의
+└── theme/          # 테마 시스템 (colors, typography, spacing)
+```
+
+## CI/CD
+
+GitHub Actions를 통해 자동화된 파이프라인이 구성되어 있습니다.
+
+### CI (Pull Request / Push to main)
+- ESLint 검사
+- TypeScript 타입 검사
+- 빌드 테스트
+
+### CD (Push to main)
+- GitHub Pages 자동 배포
+
+## 라이선스
+
+MIT
