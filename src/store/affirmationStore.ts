@@ -7,6 +7,7 @@ interface AffirmationState {
   currentIndex: number;
   playbackStatus: PlaybackStatus;
   newItemIds: Set<string>; // 새로 추가된 아이템 (애니메이션용)
+  playRequested: boolean; // 재생 요청 플래그
 
   // Actions
   addAffirmations: (texts: string[]) => Affirmation[];
@@ -25,6 +26,8 @@ interface AffirmationState {
   advanceToNext: () => boolean;
   setPlaybackStatus: (status: PlaybackStatus) => void;
   resetPlayback: () => void;
+  selectAndPlay: (index: number) => void; // 선택 후 재생 요청
+  clearPlayRequest: () => void;
 }
 
 export const useAffirmationStore = create<AffirmationState>()(
@@ -34,6 +37,7 @@ export const useAffirmationStore = create<AffirmationState>()(
       currentIndex: 0,
       playbackStatus: 'idle',
       newItemIds: new Set<string>(),
+      playRequested: false,
 
       addAffirmations: (texts: string[]) => {
         const newAffirmations: Affirmation[] = texts.map((text) => ({
@@ -152,6 +156,20 @@ export const useAffirmationStore = create<AffirmationState>()(
 
       resetPlayback: () => {
         set({ playbackStatus: 'idle' });
+      },
+
+      selectAndPlay: (index: number) => {
+        const { affirmations } = get();
+        if (index >= 0 && index < affirmations.length) {
+          set({
+            currentIndex: index,
+            playRequested: true,
+          });
+        }
+      },
+
+      clearPlayRequest: () => {
+        set({ playRequested: false });
       },
     }),
     {

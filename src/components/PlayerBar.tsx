@@ -8,10 +8,12 @@ export function PlayerBar() {
     affirmations,
     currentIndex,
     playbackStatus,
+    playRequested,
     setCurrentIndex,
     advanceToNext,
     setPlaybackStatus,
     resetPlayback,
+    clearPlayRequest,
   } = useAffirmationStore();
 
   const {
@@ -29,6 +31,9 @@ export function PlayerBar() {
       isPlayingRef.current = false;
     };
   }, []);
+
+  // handlePlay를 ref로 저장 (useEffect에서 사용)
+  const handlePlayRef = useRef<() => void>(() => {});
 
   const currentAffirmation = affirmations[currentIndex];
 
@@ -75,8 +80,7 @@ export function PlayerBar() {
 
         const hasNext = advanceToNext();
         if (!hasNext) {
-          // 마지막 항목이면 처음으로 돌아감
-          setCurrentIndex(0);
+          // 마지막 항목이면 advanceToNext가 이미 currentIndex를 0으로 설정함
           idx = 0;
         } else {
           idx++;
@@ -101,6 +105,25 @@ export function PlayerBar() {
     advanceToNext,
     resetPlayback,
   ]);
+
+  // handlePlay ref 업데이트
+  useEffect(() => {
+    handlePlayRef.current = handlePlay;
+  }, [handlePlay]);
+
+  // 플레이리스트에서 선택 시 자동 재생
+  useEffect(() => {
+    if (playRequested) {
+      clearPlayRequest();
+      // 현재 재생 중이면 중지 후 새로 시작
+      if (isPlayingRef.current) {
+        stop();
+        isPlayingRef.current = false;
+      }
+      // 약간의 딜레이 후 재생 시작
+      setTimeout(() => handlePlayRef.current(), 50);
+    }
+  }, [playRequested, clearPlayRequest]);
 
   // 일시정지
   const handlePause = useCallback(() => {

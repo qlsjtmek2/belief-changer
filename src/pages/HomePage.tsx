@@ -23,8 +23,8 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     updateAffirmation,
     deleteAffirmation,
     reorder,
-    setCurrentIndex,
     resetPlayback,
+    selectAndPlay,
     isNewItem,
   } = useAffirmationStore();
 
@@ -95,16 +95,15 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   };
 
-  // 확언 선택
+  // 확언 선택 (자동 재생)
   const handleSelect = useCallback(
     (index: number) => {
       if (playbackStatus !== 'idle') {
         stop();
-        resetPlayback();
       }
-      setCurrentIndex(index);
+      selectAndPlay(index);
     },
-    [playbackStatus, setCurrentIndex, resetPlayback]
+    [playbackStatus, selectAndPlay]
   );
 
   // 확언 삭제
