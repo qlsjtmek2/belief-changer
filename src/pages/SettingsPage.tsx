@@ -52,21 +52,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
 
-  // Provider 변경 시 한국어 음성 목록 로드
+  // Provider 변경 시 한국어 음성 목록 로드 (재생 중인 TTS를 중지하지 않음)
   const loadVoices = useCallback(async () => {
     setIsLoadingVoices(true);
     try {
       const apiKey = getActiveApiKey();
-      await ttsManager.setProvider(ttsProvider.activeProvider, {
-        apiKey,
-        voiceSettings,
-      });
-
-      const provider = ttsManager.getProvider();
-      if (provider) {
-        const voices = await provider.getKoreanVoices();
-        setAvailableVoices(voices);
-      }
+      const voices = await ttsManager.getVoicesForProvider(
+        ttsProvider.activeProvider,
+        { apiKey, voiceSettings }
+      );
+      setAvailableVoices(voices);
     } catch (error) {
       console.warn('음성 목록 로드 실패:', error);
       setAvailableVoices([]);

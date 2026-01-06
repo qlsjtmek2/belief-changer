@@ -1,4 +1,4 @@
-import type { TTSProvider, TTSProviderConfig } from './types';
+import type { TTSProvider, TTSProviderConfig, TTSVoice } from './types';
 import type { TTSProviderType } from '../../types';
 import { WebSpeechProvider, ElevenLabsProvider, OpenAITTSProvider } from './providers';
 
@@ -72,6 +72,31 @@ class TTSManager {
    */
   isReady(): boolean {
     return this.currentProvider !== null;
+  }
+
+  /**
+   * Provider의 음성 목록을 가져옵니다 (재생 Provider를 변경하지 않음)
+   *
+   * 설정 페이지에서 음성 목록만 필요할 때 사용합니다.
+   * 현재 재생 중인 Provider를 중지하지 않습니다.
+   */
+  async getVoicesForProvider(
+    type: TTSProviderType,
+    config: TTSProviderConfig = {}
+  ): Promise<TTSVoice[]> {
+    // 캐시된 Provider 또는 새로 생성
+    let provider = this.providers.get(type);
+
+    if (!provider) {
+      provider = this.createProvider(type);
+      this.providers.set(type, provider);
+    }
+
+    // 초기화 (API 키 설정)
+    await provider.initialize(config);
+
+    // 음성 목록 반환 (currentProvider 변경 없음!)
+    return provider.getKoreanVoices();
   }
 
   /**
