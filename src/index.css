@@ -4,21 +4,31 @@
 :root {
   /* Primary Colors */
   --color-primary: #6366F1;
+  --color-primary-main: #6366F1;
   --color-primary-light: #818CF8;
   --color-primary-dark: #4F46E5;
+  --color-primary-contrast: #FFFFFF;
 
   /* Secondary Colors */
   --color-secondary: #8B5CF6;
+  --color-secondary-main: #8B5CF6;
   --color-secondary-light: #A78BFA;
   --color-secondary-dark: #7C3AED;
+
+  /* Accent Colors */
+  --color-accent-cyan: #06B6D4;
 
   /* Background Colors */
   --color-bg-default: #0F0F23;
   --color-bg-paper: #1A1A2E;
   --color-bg-elevated: #252542;
+  --color-background-default: #0F0F23;
+  --color-background-paper: #1A1A2E;
+  --color-background-elevated: #252542;
 
   /* Surface Colors */
   --color-surface: #1A1A2E;
+  --color-surface-default: #1A1A2E;
   --color-surface-hover: #252542;
   --color-surface-active: #2D2D4A;
   --color-surface-border: #3D3D5C;
@@ -31,15 +41,36 @@
 
   /* Semantic Colors */
   --color-success: #10B981;
+  --color-success-main: #10B981;
   --color-warning: #F59E0B;
+  --color-warning-main: #F59E0B;
   --color-error: #EF4444;
+  --color-error-main: #EF4444;
+  --color-error-light: #F87171;
   --color-info: #3B82F6;
+  --color-info-main: #3B82F6;
 
   /* Typography */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Spacing */
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  /* Spacing (semantic) */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Spacing (numeric) */
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
   --spacing-3: 0.75rem;

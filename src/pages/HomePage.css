@@ -200,7 +200,6 @@
 .home-page__search-input input {
   font-size: var(--font-size-lg) !important;
   padding: var(--spacing-lg) !important;
-  text-align: center;
 }
 
 /* Count Selector */

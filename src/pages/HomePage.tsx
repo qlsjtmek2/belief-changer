@@ -302,7 +302,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
               disabled={!affirmationText.trim() || !hasApiKey()}
               isLoading={isGenerating}
             >
-              대화 생성하기 ({dialogueCount}개)
+              대화 생성하기
             </Button>
 
             {!hasApiKey() && (
