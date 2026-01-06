@@ -91,14 +91,14 @@
 
 /* 재생 중 텍스트 효과 - Marquee 스크롤 (정렬 유지) */
 .player-bar__info--playing .player-bar__text {
-  animation: textMarquee 6s ease-in-out infinite;
+  animation: textMarquee 12s linear infinite;
 }
 
 @keyframes textMarquee {
-  0%, 20% {
+  0%, 10% {
     transform: translateX(0);
   }
-  80%, 100% {
+  90%, 100% {
     transform: translateX(-20%);
   }
 }
