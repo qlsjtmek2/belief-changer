@@ -192,7 +192,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         <section className="home-page__input-section">
           <div className="home-page__input-wrapper">
             <Input
-              placeholder="새로운 확언을 입력하세요..."
+              placeholder="새로운 확언을 입력하세요... 예: 나는 운동을 좋아한다"
               value={newAffirmation}
               onChange={(e) => setNewAffirmation(e.target.value)}
               onKeyDown={handleKeyDown}
