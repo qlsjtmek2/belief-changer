@@ -24,35 +24,8 @@ export function PlaylistPanel({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
   const editInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<HTMLDivElement>(null);
-  const prevIdsRef = useRef<Set<string>>(new Set());
-
-  // 새로 추가된 아이템 추적
-  useEffect(() => {
-    const currentIds = new Set(affirmations.map(a => a.id));
-    const newIds = new Set<string>();
-
-    // 이전에 없던 아이템 찾기
-    currentIds.forEach(id => {
-      if (!prevIdsRef.current.has(id)) {
-        newIds.add(id);
-      }
-    });
-
-    // 이전 ID 목록 업데이트
-    prevIdsRef.current = currentIds;
-
-    if (newIds.size > 0) {
-      setNewItemIds(newIds);
-      // 애니메이션 후 클래스 제거
-      const timer = setTimeout(() => {
-        setNewItemIds(new Set());
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [affirmations]);
 
   // 편집 모드 시 input에 포커스
   useEffect(() => {
@@ -154,7 +127,7 @@ export function PlaylistPanel({
               index === currentIndex ? 'playlist-item--current' : ''
             } ${dragOverIndex === index ? 'playlist-item--drag-over' : ''} ${
               editingId === affirmation.id ? 'playlist-item--editing' : ''
-            } ${newItemIds.has(affirmation.id) ? 'playlist-item--new' : ''}`}
+            }`}
             draggable={editingId !== affirmation.id}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragEnd={handleDragEnd}
