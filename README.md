@@ -1,4 +1,4 @@
-# Belief Changer (믿음 변화기)
+# Belief Changer
 
 사용자가 입력한 확언(affirmation)을 여러 사람의 대화로 변환하여 TTS로 들려주는 웹 앱입니다.
 
