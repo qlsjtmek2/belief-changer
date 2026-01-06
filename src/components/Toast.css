@@ -46,7 +46,6 @@
 /* 퇴장 애니메이션 */
 .toast--exiting {
   opacity: 0;
-  transform: translateY(-16px) scale(0.95) !important;
 }
 
 .toast__icon {
