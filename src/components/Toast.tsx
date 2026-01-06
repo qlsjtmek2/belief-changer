@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import './Toast.css';
 
 interface ToastProps {
@@ -9,21 +9,14 @@ interface ToastProps {
 }
 
 export function Toast({ message, isVisible, onClose, duration = 2500 }: ToastProps) {
-  const lastMessageRef = useRef(message);
-
-  // 메시지가 있을 때만 업데이트 (사라지는 동안 유지)
-  useEffect(() => {
-    if (message) {
-      lastMessageRef.current = message;
-    }
-  }, [message]);
-
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(onClose, duration);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose, duration]);
+
+  if (!message) return null;
 
   return (
     <div className={`toast ${isVisible ? 'toast--visible' : ''}`}>
@@ -35,7 +28,7 @@ export function Toast({ message, isVisible, onClose, duration = 2500 }: ToastPro
           />
         </svg>
       </div>
-      <span className="toast__message">{message || lastMessageRef.current}</span>
+      <span className="toast__message">{message}</span>
     </div>
   );
 }
