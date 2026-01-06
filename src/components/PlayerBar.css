@@ -84,6 +84,8 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   white-space: nowrap;
+  text-align: center;
+  width: 100%;
 }
 
 /* 재생 중 텍스트 효과 - Marquee 스크롤 (정렬 유지) */
