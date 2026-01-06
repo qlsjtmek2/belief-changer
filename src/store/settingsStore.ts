@@ -21,7 +21,7 @@ const DEFAULT_SPEAKER_VOICES: SpeakerVoiceSettings = {
 };
 
 const DEFAULT_GEMINI_SETTINGS: GeminiSettings = {
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash',
   temperature: 1.0,
   customPrompt: '',
 };

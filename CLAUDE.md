@@ -117,7 +117,7 @@ interface SpeakerVoiceSettings {
 
 // Gemini 설정
 interface GeminiSettings {
-  model: string;         // 기본값: 'gemini-2.0-flash'
+  model: string;         // 기본값: 'gemini-2.5-flash'
   temperature: number;   // 0.0~2.0 (기본 1.0)
   customPrompt: string;  // 빈 문자열이면 기본 프롬프트 사용
 }
@@ -176,7 +176,7 @@ Gemini API를 사용해 확언을 대화로 변환.
 generateDialogue(apiKey, { affirmation, userName, speakerCount, geminiSettings })
 ```
 
-**지원 모델**: `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash`
+**지원 모델**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`
 
 ### utils/prompts.ts
 

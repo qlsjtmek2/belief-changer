@@ -531,3 +531,115 @@
     background-position: -200% 0;
   }
 }
+
+/* Playlist List (전체 재생 모드) */
+.home-page__playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  max-height: 180px;
+  overflow-y: auto;
+  padding: var(--spacing-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+}
+
+.home-page__playlist-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.home-page__playlist-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.home-page__playlist-list::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface-border);
+  border-radius: 2px;
+}
+
+.home-page__playlist-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.home-page__playlist-item--active {
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.12),
+    rgba(139, 92, 246, 0.12)
+  );
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.home-page__playlist-item-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
+}
+
+.home-page__playlist-item--active .home-page__playlist-item-number {
+  background: var(--color-primary);
+  color: white;
+}
+
+.home-page__playlist-item-text {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-page__playlist-item--active .home-page__playlist-item-text {
+  color: var(--color-text-primary);
+}
+
+.home-page__playlist-item-playing {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Wave Animation (재사용) */
+.home-page__wave {
+  width: 3px;
+  height: 12px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  animation: waveAnim 0.8s ease-in-out infinite;
+}
+
+.home-page__wave:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.home-page__wave:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.home-page__wave:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes waveAnim {
+  0%, 100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}

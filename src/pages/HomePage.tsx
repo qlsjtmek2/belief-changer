@@ -515,27 +515,64 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                     <p>생성된 대화가 없습니다.</p>
                     <p className="home-page__empty-hint">확언을 선택하고 대화를 생성해보세요.</p>
                   </div>
-                ) : currentDialogue ? (
+                ) : (
                   <>
-                    <div className="home-page__playlist-header">
-                      <span className="home-page__playlist-badge">
-                        전체 {dialogues.length}개 대화
-                      </span>
+                    {/* 현재 재생 중인 확언 표시 */}
+                    {currentDialogue && (() => {
+                      const currentAffirmation = affirmations.find(a => a.id === currentDialogue.affirmationId);
+                      return currentAffirmation ? (
+                        <div className="home-page__selected-affirmation">
+                          <span className="home-page__selected-label">
+                            현재 대화 ({currentPlaylistIndex + 1}/{dialogues.length})
+                          </span>
+                          <p className="home-page__selected-text">{currentAffirmation.text}</p>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* 대화 목록 - 전체 모드용 */}
+                    <div className="home-page__playlist-list">
+                      {dialogues.map((dialogue, index) => {
+                        const isCurrentDialogue = dialogue.id === currentDialogue?.id;
+                        const dialogueAffirmation = affirmations.find(a => a.id === dialogue.affirmationId);
+                        return (
+                          <div
+                            key={dialogue.id}
+                            className={`home-page__playlist-item ${isCurrentDialogue ? 'home-page__playlist-item--active' : ''}`}
+                          >
+                            <span className="home-page__playlist-item-number">{index + 1}</span>
+                            <span className="home-page__playlist-item-text">
+                              {dialogueAffirmation?.text || '확언 없음'}
+                            </span>
+                            {isCurrentDialogue && playbackStatus === 'playing' && (
+                              <span className="home-page__playlist-item-playing">
+                                <span className="home-page__wave" />
+                                <span className="home-page__wave" />
+                                <span className="home-page__wave" />
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <DialoguePlayer
-                      lines={currentDialogue.lines}
-                      currentLineIndex={currentLineIndex}
-                      playbackStatus={playbackStatus}
-                      onPlay={handlePlay}
-                      onPause={handlePause}
-                      onStop={handleStop}
-                      editable={isEditMode}
-                      onDeleteLine={handleDeleteLine}
-                      onReorderLines={handleReorderLines}
-                      playlistInfo={playlistInfo}
-                    />
+
+                    {/* DialoguePlayer */}
+                    {currentDialogue && (
+                      <DialoguePlayer
+                        lines={currentDialogue.lines}
+                        currentLineIndex={currentLineIndex}
+                        playbackStatus={playbackStatus}
+                        onPlay={handlePlay}
+                        onPause={handlePause}
+                        onStop={handleStop}
+                        editable={isEditMode}
+                        onDeleteLine={handleDeleteLine}
+                        onReorderLines={handleReorderLines}
+                        playlistInfo={playlistInfo}
+                      />
+                    )}
                   </>
-                ) : null}
+                )}
               </div>
             ) : selectedAffirmation ? (
               // 개별 재생 모드

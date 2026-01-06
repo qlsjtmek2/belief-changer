@@ -9,9 +9,11 @@ import './SettingsPage.css';
 const SPEAKER_LABELS = ['화자 1', '화자 2', '화자 3'];
 
 const GEMINI_MODELS = [
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '빠른 응답' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: '고품질 출력' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: '균형잡힌 성능' },
+  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', description: '최고 성능 (Preview)' },
+  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: '빠른 속도 + 고성능 (Preview)' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: '복잡한 추론' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '가성비 최고' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: '가장 빠름' },
 ];
 
 interface SettingsPageProps {
@@ -211,15 +213,26 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 id="custom-prompt"
                 className="settings-page__textarea"
                 rows={10}
-                placeholder={DEFAULT_PROMPT_TEMPLATE}
-                value={geminiSettings.customPrompt}
+                value={geminiSettings.customPrompt || DEFAULT_PROMPT_TEMPLATE}
                 onChange={(e) => setCustomPrompt(e.target.value)}
               />
-              <p className="settings-page__hint">
-                사용 가능한 변수: {'{{affirmation}}'}, {'{{userName}}'}, {'{{speakerCount}}'}, {'{{minTurns}}'}, {'{{maxTurns}}'}
-                <br />
-                비워두면 기본 프롬프트가 사용됩니다.
-              </p>
+              <div className="settings-page__prompt-footer">
+                <p className="settings-page__hint">
+                  사용 가능한 변수: {'{{affirmation}}'}, {'{{userName}}'}, {'{{speakerCount}}'}, {'{{minTurns}}'}, {'{{maxTurns}}'}
+                </p>
+                <button
+                  type="button"
+                  className="settings-page__restore-btn"
+                  onClick={() => setCustomPrompt('')}
+                  disabled={!geminiSettings.customPrompt}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  기본 프롬프트로 복구
+                </button>
+              </div>
             </div>
           </div>
         </section>
