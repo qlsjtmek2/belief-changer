@@ -14,6 +14,7 @@ export class WebSpeechProvider implements TTSProvider {
   private isPlaying = false;
   private isPaused = false;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async initialize(_config: TTSProviderConfig): Promise<void> {
     // 음성 목록 로딩 대기 (Chrome 비동기 로딩 대응)
     await this.getAvailableVoices();

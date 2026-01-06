@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button, Input, AffirmationCard, DialoguePlayer, DialogueList } from '../components';
 import { useAffirmationStore, useDialogueStore, useSettingsStore } from '../store';
 import { generateDialogue, speakDialogue, pause, resume, stop, ttsManager } from '../services';
@@ -61,7 +61,10 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
   const currentDialogue = getCurrentDialogue();
   const selectedAffirmation = affirmations.find((a) => a.id === selectedId);
-  const selectedDialogues = selectedId ? getDialoguesByAffirmation(selectedId) : [];
+  const selectedDialogues = useMemo(
+    () => (selectedId ? getDialoguesByAffirmation(selectedId) : []),
+    [selectedId, getDialoguesByAffirmation]
+  );
 
   // 확언 추가
   const handleAddAffirmation = () => {
