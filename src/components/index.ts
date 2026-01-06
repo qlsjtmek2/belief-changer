@@ -13,3 +13,5 @@ export type { AffirmationCardProps } from './AffirmationCard';
 
 export { DialoguePlayer } from './DialoguePlayer';
 export type { DialoguePlayerProps } from './DialoguePlayer';
+
+export { DialogueList } from './DialogueList';

@@ -7,9 +7,16 @@ export interface Affirmation {
 
 // === Dialogue (대화 스크립트) ===
 export interface DialogueLine {
+  id: string;
   speaker: string;
   text: string;
 }
+
+// Gemini API에서 반환하는 원본 형식 (id 없음)
+export type RawDialogueLine = Omit<DialogueLine, 'id'>;
+
+// === Playlist (플레이리스트) ===
+export type PlaylistMode = 'single' | 'all';
 
 export interface Dialogue {
   id: string;

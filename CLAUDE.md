@@ -37,7 +37,8 @@ src/
 │   ├── Button.tsx           # 버튼 (primary/secondary/ghost, isLoading 지원)
 │   ├── Input.tsx            # 입력 필드 (label, hint 지원)
 │   ├── AffirmationCard.tsx  # 확언 카드 (선택/편집/삭제)
-│   └── DialoguePlayer.tsx   # 대화 재생기 (진행바, 컨트롤)
+│   ├── DialoguePlayer.tsx   # 대화 재생기 (진행바, 컨트롤, 편집 모드)
+│   └── DialogueList.tsx     # 확언별 대화 목록 (선택/삭제/추가 생성)
 ├── pages/           # 페이지 컴포넌트
 │   ├── HomePage.tsx         # 메인 화면 (확언 목록 + 대화 재생)
 │   └── SettingsPage.tsx     # 설정 화면 (API 키, TTS 설정, 음성 설정)
@@ -79,9 +80,13 @@ interface Affirmation {
 
 // 대화 라인
 interface DialogueLine {
+  id: string;        // 라인 고유 ID (삭제/순서 변경용)
   speaker: string;
   text: string;
 }
+
+// 플레이리스트 모드
+type PlaylistMode = 'single' | 'all';
 
 // 음성 설정
 interface VoiceSettings {
@@ -123,9 +128,15 @@ interface SpeakerVoiceSettings {
 
 ### dialogueStore
 
-대화 생성/저장 및 재생 상태 관리.
+대화 생성/저장, 재생 상태, 플레이리스트 관리. localStorage 영속성.
 
-- `addDialogue(affirmationId, lines)`: 대화 저장
+- `addDialogue(affirmationId, lines)`: 대화 저장 (라인에 id 자동 생성)
+- `deleteDialogue(id)`: 대화 삭제
+- `getDialoguesByAffirmation(id)`: 확언별 대화 목록 조회
+- `deleteLine(dialogueId, lineId)`: 특정 라인 삭제
+- `reorderLines(dialogueId, lineIds)`: 라인 순서 변경
+- `setPlaylistMode(mode)`: 플레이리스트 모드 변경 ('single' | 'all')
+- `advancePlaylist()`: 다음 대화로 이동
 - `setPlaybackStatus(status)`: 재생 상태 변경
 - `resetPlayback()`: 재생 초기화
 

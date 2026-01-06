@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
-import { Button, Input, AffirmationCard, DialoguePlayer } from '../components';
+import { useState, useCallback, useRef } from 'react';
+import { Button, Input, AffirmationCard, DialoguePlayer, DialogueList } from '../components';
 import { useAffirmationStore, useDialogueStore, useSettingsStore } from '../store';
 import { generateDialogue, speakDialogue, pause, resume, stop, ttsManager } from '../services';
+import type { PlaylistMode } from '../types';
 import './HomePage.css';
 
 interface HomePageProps {
@@ -12,6 +13,8 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   const [newAffirmation, setNewAffirmation] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const isPlayingAllRef = useRef(false);
 
   // Stores
   const {
@@ -24,14 +27,24 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   } = useAffirmationStore();
 
   const {
+    dialogues,
     playbackStatus,
     currentLineIndex,
+    playlistMode,
+    currentPlaylistIndex,
     addDialogue,
+    deleteDialogue,
+    deleteLine,
+    reorderLines,
     setCurrentDialogue,
     getCurrentDialogue,
+    getDialoguesByAffirmation,
+    setPlaylistMode,
+    advancePlaylist,
     setPlaybackStatus,
     setCurrentLineIndex,
     resetPlayback,
+    resetPlaylist,
   } = useDialogueStore();
 
   const {
@@ -47,6 +60,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
   const currentDialogue = getCurrentDialogue();
   const selectedAffirmation = affirmations.find((a) => a.id === selectedId);
+  const selectedDialogues = selectedId ? getDialoguesByAffirmation(selectedId) : [];
 
   // 확언 추가
   const handleAddAffirmation = () => {
@@ -91,8 +105,8 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   };
 
-  // TTS 재생
-  const handlePlay = useCallback(async () => {
+  // 개별 대화 재생
+  const playSingleDialogue = useCallback(async () => {
     if (!currentDialogue) return;
 
     // 일시정지 상태면 재개
@@ -113,18 +127,17 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     setError(null);
 
     try {
-      // Provider 설정 (설정이 변경되었을 수 있으므로 매번 설정)
       await ttsManager.setProvider(ttsProvider.activeProvider, {
         apiKey: getActiveApiKey(),
         voiceSettings,
       });
 
-      // 화자별 선택된 음성 맵 가져오기
       const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
 
       await speakDialogue(currentDialogue.lines, {
         settings: voiceSettings,
         speakerVoiceMap,
+        loop: false,
         onLineStart: (index) => setCurrentLineIndex(index),
         onComplete: () => resetPlayback(),
         onError: (err) => {
@@ -149,15 +162,149 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     resetPlayback,
   ]);
 
+  // 전체 대화 연속 재생
+  const playAllDialogues = useCallback(async () => {
+    if (dialogues.length === 0) return;
+
+    if (playbackStatus === 'paused') {
+      resume();
+      setPlaybackStatus('playing');
+      return;
+    }
+
+    if (!hasTTSApiKey()) {
+      setError(`${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`);
+      return;
+    }
+
+    setPlaylistMode('all');
+    setPlaybackStatus('playing');
+    setCurrentLineIndex(0);
+    setError(null);
+    isPlayingAllRef.current = true;
+
+    try {
+      await ttsManager.setProvider(ttsProvider.activeProvider, {
+        apiKey: getActiveApiKey(),
+        voiceSettings,
+      });
+
+      const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
+
+      // 전체 대화 순회
+      for (let i = 0; i < dialogues.length && isPlayingAllRef.current; i++) {
+        const dialogue = dialogues[i];
+        setCurrentDialogue(dialogue.id);
+
+        await new Promise<void>((resolve, reject) => {
+          speakDialogue(dialogue.lines, {
+            settings: voiceSettings,
+            speakerVoiceMap,
+            loop: false,
+            onLineStart: (index) => setCurrentLineIndex(index),
+            onComplete: () => resolve(),
+            onError: (err) => reject(err),
+          });
+        });
+
+        if (i < dialogues.length - 1 && isPlayingAllRef.current) {
+          advancePlaylist();
+        }
+      }
+
+      resetPlayback();
+      resetPlaylist();
+    } catch (err) {
+      if (isPlayingAllRef.current) {
+        setError(err instanceof Error ? err.message : 'TTS 재생에 실패했습니다.');
+      }
+      resetPlayback();
+      resetPlaylist();
+    } finally {
+      isPlayingAllRef.current = false;
+    }
+  }, [
+    dialogues,
+    playbackStatus,
+    voiceSettings,
+    ttsProvider.activeProvider,
+    hasTTSApiKey,
+    getActiveApiKey,
+    getSpeakerVoiceMap,
+    setPlaylistMode,
+    setPlaybackStatus,
+    setCurrentLineIndex,
+    setCurrentDialogue,
+    advancePlaylist,
+    resetPlayback,
+    resetPlaylist,
+  ]);
+
+  // 재생 핸들러 (모드에 따라 분기)
+  const handlePlay = useCallback(() => {
+    if (playlistMode === 'all') {
+      playAllDialogues();
+    } else {
+      playSingleDialogue();
+    }
+  }, [playlistMode, playAllDialogues, playSingleDialogue]);
+
   const handlePause = useCallback(() => {
     pause();
     setPlaybackStatus('paused');
   }, [setPlaybackStatus]);
 
   const handleStop = useCallback(() => {
+    isPlayingAllRef.current = false;
     stop();
     resetPlayback();
-  }, [resetPlayback]);
+    resetPlaylist();
+  }, [resetPlayback, resetPlaylist]);
+
+  // 모드 변경 핸들러
+  const handleModeChange = (mode: PlaylistMode) => {
+    if (playbackStatus !== 'idle') {
+      handleStop();
+    }
+    setPlaylistMode(mode);
+    setIsEditMode(false);
+
+    if (mode === 'all' && dialogues.length > 0) {
+      setCurrentDialogue(dialogues[0].id);
+    } else if (mode === 'single' && selectedDialogues.length > 0) {
+      setCurrentDialogue(selectedDialogues[0].id);
+    }
+  };
+
+  // 라인 삭제 핸들러
+  const handleDeleteLine = useCallback((lineId: string) => {
+    if (currentDialogue) {
+      deleteLine(currentDialogue.id, lineId);
+    }
+  }, [currentDialogue, deleteLine]);
+
+  // 라인 순서 변경 핸들러
+  const handleReorderLines = useCallback((lineIds: string[]) => {
+    if (currentDialogue) {
+      reorderLines(currentDialogue.id, lineIds);
+    }
+  }, [currentDialogue, reorderLines]);
+
+  // 대화 삭제 핸들러
+  const handleDeleteDialogue = useCallback((dialogueId: string) => {
+    deleteDialogue(dialogueId);
+    if (selectedDialogues.length > 1) {
+      const remaining = selectedDialogues.filter((d) => d.id !== dialogueId);
+      if (remaining.length > 0) {
+        setCurrentDialogue(remaining[0].id);
+      }
+    }
+  }, [deleteDialogue, selectedDialogues, setCurrentDialogue]);
+
+  // 플레이리스트 정보
+  const playlistInfo = playlistMode === 'all' && dialogues.length > 0
+    ? { current: currentPlaylistIndex + 1, total: dialogues.length }
+    : undefined;
 
   return (
     <div className="home-page">
@@ -217,6 +364,37 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           )}
         </section>
 
+        {/* Mode Switch */}
+        {dialogues.length > 0 && (
+          <div className="home-page__mode-switch">
+            <button
+              type="button"
+              className={`home-page__mode-btn ${playlistMode === 'single' ? 'home-page__mode-btn--active' : ''}`}
+              onClick={() => handleModeChange('single')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+              </svg>
+              개별 재생
+            </button>
+            <button
+              type="button"
+              className={`home-page__mode-btn ${playlistMode === 'all' ? 'home-page__mode-btn--active' : ''}`}
+              onClick={() => handleModeChange('all')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              전체 재생 ({dialogues.length}개)
+            </button>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="home-page__error" role="alert">
@@ -257,7 +435,17 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                     key={affirmation.id}
                     affirmation={affirmation}
                     isSelected={affirmation.id === selectedId}
-                    onSelect={selectAffirmation}
+                    onSelect={(id) => {
+                      selectAffirmation(id);
+                      if (playlistMode === 'single') {
+                        const dialoguesForAffirmation = getDialoguesByAffirmation(id);
+                        if (dialoguesForAffirmation.length > 0) {
+                          setCurrentDialogue(dialoguesForAffirmation[0].id);
+                        } else {
+                          setCurrentDialogue(null);
+                        }
+                      }
+                    }}
                     onEdit={updateAffirmation}
                     onDelete={deleteAffirmation}
                   />
@@ -268,16 +456,75 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
           {/* Dialogue Section */}
           <section className="home-page__dialogue">
-            <h2 className="home-page__section-title">대화 재생</h2>
+            <div className="home-page__dialogue-header">
+              <h2 className="home-page__section-title">
+                {playlistMode === 'all' ? '전체 대화 재생' : '대화 재생'}
+              </h2>
+              {currentDialogue && playbackStatus === 'idle' && (
+                <button
+                  type="button"
+                  className={`home-page__edit-toggle ${isEditMode ? 'home-page__edit-toggle--active' : ''}`}
+                  onClick={() => setIsEditMode(!isEditMode)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  편집
+                </button>
+              )}
+            </div>
 
-            {selectedAffirmation ? (
+            {playlistMode === 'all' ? (
+              // 전체 재생 모드
+              <div className="home-page__dialogue-content">
+                {dialogues.length === 0 ? (
+                  <div className="home-page__empty">
+                    <p>생성된 대화가 없습니다.</p>
+                    <p className="home-page__empty-hint">확언을 선택하고 대화를 생성해보세요.</p>
+                  </div>
+                ) : currentDialogue ? (
+                  <>
+                    <div className="home-page__playlist-header">
+                      <span className="home-page__playlist-badge">
+                        전체 {dialogues.length}개 대화
+                      </span>
+                    </div>
+                    <DialoguePlayer
+                      lines={currentDialogue.lines}
+                      currentLineIndex={currentLineIndex}
+                      playbackStatus={playbackStatus}
+                      onPlay={handlePlay}
+                      onPause={handlePause}
+                      onStop={handleStop}
+                      editable={isEditMode}
+                      onDeleteLine={handleDeleteLine}
+                      onReorderLines={handleReorderLines}
+                      playlistInfo={playlistInfo}
+                    />
+                  </>
+                ) : null}
+              </div>
+            ) : selectedAffirmation ? (
+              // 개별 재생 모드
               <div className="home-page__dialogue-content">
                 <div className="home-page__selected-affirmation">
                   <span className="home-page__selected-label">선택된 확언</span>
                   <p className="home-page__selected-text">{selectedAffirmation.text}</p>
                 </div>
 
-                {!currentDialogue || currentDialogue.affirmationId !== selectedId ? (
+                {selectedDialogues.length > 0 && (
+                  <DialogueList
+                    dialogues={selectedDialogues}
+                    selectedDialogueId={currentDialogue?.id ?? null}
+                    onSelect={setCurrentDialogue}
+                    onDelete={handleDeleteDialogue}
+                    onAddNew={handleGenerateDialogue}
+                    isGenerating={isGenerating}
+                  />
+                )}
+
+                {selectedDialogues.length === 0 ? (
                   isGenerating ? (
                     <div className="home-page__loading">
                       <div className="home-page__loading-header">
@@ -303,7 +550,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                       대화 생성하기
                     </Button>
                   )
-                ) : (
+                ) : currentDialogue && currentDialogue.affirmationId === selectedId ? (
                   <DialoguePlayer
                     lines={currentDialogue.lines}
                     currentLineIndex={currentLineIndex}
@@ -311,8 +558,11 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onStop={handleStop}
+                    editable={isEditMode}
+                    onDeleteLine={handleDeleteLine}
+                    onReorderLines={handleReorderLines}
                   />
-                )}
+                ) : null}
               </div>
             ) : (
               <div className="home-page__empty">

@@ -53,13 +53,21 @@
 .dialogue-player__line {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
+  align-items: flex-start;
+  gap: var(--spacing-2);
   padding: var(--spacing-3);
   background-color: var(--color-bg-elevated);
   border-radius: var(--radius-lg);
   opacity: 0.6;
   transition: all 0.2s ease;
+}
+
+.dialogue-player__line-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
 }
 
 .dialogue-player__line--past {
@@ -72,6 +80,92 @@
   box-shadow:
     0 0 0 1px var(--color-primary),
     0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+/* Editable Line Styles */
+.dialogue-player__line--editable {
+  cursor: grab;
+  opacity: 1;
+}
+
+.dialogue-player__line--editable:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.dialogue-player__line--dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: scale(0.98);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.dialogue-player__line--drop-target {
+  background-color: var(--color-surface-active);
+  box-shadow:
+    0 0 0 2px var(--color-primary),
+    inset 0 0 0 2px var(--color-primary);
+}
+
+/* Drag Handle */
+.dialogue-player__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--color-text-hint);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.dialogue-player__line--editable:hover .dialogue-player__drag-handle {
+  opacity: 1;
+}
+
+.dialogue-player__drag-handle:hover {
+  color: var(--color-text-secondary);
+}
+
+.dialogue-player__line--dragging .dialogue-player__drag-handle {
+  opacity: 1;
+  cursor: grabbing;
+  color: var(--color-primary);
+}
+
+/* Delete Button */
+.dialogue-player__delete-btn {
+  position: absolute;
+  top: var(--spacing-2);
+  right: var(--spacing-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-hint);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.dialogue-player__line--editable:hover .dialogue-player__delete-btn {
+  opacity: 1;
+}
+
+.dialogue-player__delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.dialogue-player__delete-btn:active {
+  transform: scale(0.9);
 }
 
 .dialogue-player__speaker {
@@ -142,6 +236,11 @@
   flex: 1;
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
+}
+
+.dialogue-player__playlist-info {
+  color: var(--color-primary-light);
+  font-weight: 500;
 }
 
 .dialogue-player__spacer {
