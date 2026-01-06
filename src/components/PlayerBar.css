@@ -92,27 +92,29 @@
   transition: all 0.3s ease;
 }
 
-/* 재생 중 텍스트 효과 */
+/* 재생 중 텍스트 효과 - Shimmer */
 .player-bar__text--playing {
-  color: var(--color-primary-light);
-  text-shadow:
-    0 0 10px var(--color-primary-main),
-    0 0 20px rgba(99, 102, 241, 0.4);
-  animation: textPulse 2s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--color-text-primary) 0%,
+    var(--color-text-primary) 40%,
+    var(--color-primary-light) 50%,
+    var(--color-text-primary) 60%,
+    var(--color-text-primary) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 2s linear infinite;
 }
 
-@keyframes textPulse {
-  0%, 100% {
-    opacity: 1;
-    text-shadow:
-      0 0 10px var(--color-primary-main),
-      0 0 20px rgba(99, 102, 241, 0.4);
+@keyframes textShimmer {
+  0% {
+    background-position: 100% 0;
   }
-  50% {
-    opacity: 0.85;
-    text-shadow:
-      0 0 15px var(--color-primary-main),
-      0 0 30px rgba(99, 102, 241, 0.6);
+  100% {
+    background-position: -100% 0;
   }
 }
 
