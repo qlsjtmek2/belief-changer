@@ -30,6 +30,9 @@ interface SettingsState extends Settings {
   // AI 생성 활성화 여부
   aiGenerationEnabled: boolean;
 
+  // 생성 개수
+  generationCount: number;
+
   // TTS Provider 설정
   ttsProvider: TTSProviderSettings;
 
@@ -46,6 +49,7 @@ interface SettingsState extends Settings {
   resetVoiceSettings: () => void;
   hasApiKey: () => boolean;
   setAiGenerationEnabled: (enabled: boolean) => void;
+  setGenerationCount: (count: number) => void;
 
   // Actions - TTS Provider
   setActiveProvider: (provider: TTSProviderType) => void;
@@ -72,6 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
       geminiApiKey: '',
       voiceSettings: DEFAULT_VOICE_SETTINGS,
       aiGenerationEnabled: true,
+      generationCount: 3,
       ttsProvider: DEFAULT_TTS_PROVIDER_SETTINGS,
       selectedVoice: DEFAULT_SELECTED_VOICE,
       geminiSettings: DEFAULT_GEMINI_SETTINGS,
@@ -100,6 +105,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       setAiGenerationEnabled: (enabled: boolean) => {
         set({ aiGenerationEnabled: enabled });
+      },
+
+      setGenerationCount: (count: number) => {
+        set({ generationCount: count });
       },
 
       // TTS Provider 액션
@@ -195,6 +204,8 @@ export const useSettingsStore = create<SettingsState>()(
         ...(persistedState as Partial<SettingsState>),
         // aiGenerationEnabled가 없는 기존 데이터 처리 (기본값 true)
         aiGenerationEnabled: (persistedState as Partial<SettingsState>)?.aiGenerationEnabled ?? true,
+        // generationCount가 없는 기존 데이터 처리 (기본값 3)
+        generationCount: (persistedState as Partial<SettingsState>)?.generationCount ?? 3,
         // ttsProvider가 없는 기존 데이터 처리
         ttsProvider: {
           ...DEFAULT_TTS_PROVIDER_SETTINGS,
