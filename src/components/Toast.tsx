@@ -35,7 +35,7 @@ function SingleToast({ toast, index, onRemove }: SingleToastProps) {
   ].filter(Boolean).join(' ');
 
   // 스택 위치 계산 (최신이 아래, 이전 것은 위로)
-  const stackOffset = index * 44; // 각 토스트 높이 + 간격
+  const stackOffset = index * 38; // 각 토스트 높이 + 간격
 
   return (
     <div
