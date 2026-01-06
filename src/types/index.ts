@@ -1,10 +1,3 @@
-// === Affirmation (확언) ===
-export interface Affirmation {
-  id: string;
-  text: string;
-  createdAt: number;
-}
-
 // === Dialogue (대화 스크립트) ===
 export interface DialogueLine {
   id: string;
@@ -15,12 +8,9 @@ export interface DialogueLine {
 // Gemini API에서 반환하는 원본 형식 (id 없음)
 export type RawDialogueLine = Omit<DialogueLine, 'id'>;
 
-// === Playlist (플레이리스트) ===
-export type PlaylistMode = 'single' | 'all';
-
 export interface Dialogue {
   id: string;
-  affirmationId: string;
+  sourceAffirmation: string; // 생성에 사용된 확언 텍스트
   lines: DialogueLine[];
   createdAt: number;
 }

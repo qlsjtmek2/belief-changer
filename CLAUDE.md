@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 핵심 플로우
 
 ```
-확언 입력 → Gemini AI 대화 생성 → TTS 재생 (Web Speech / ElevenLabs / OpenAI)
+확언 입력 → N개 대화 병렬 생성 → 플레이리스트로 연속 재생
 ```
 
 ## 기술 스택
@@ -36,11 +36,9 @@ src/
 ├── components/      # 재사용 가능한 UI 컴포넌트
 │   ├── Button.tsx           # 버튼 (primary/secondary/ghost, isLoading 지원)
 │   ├── Input.tsx            # 입력 필드 (label, hint 지원)
-│   ├── AffirmationCard.tsx  # 확언 카드 (선택/편집/삭제)
-│   ├── DialoguePlayer.tsx   # 대화 재생기 (진행바, 컨트롤, 편집 모드)
-│   └── DialogueList.tsx     # 확언별 대화 목록 (선택/삭제/추가 생성)
+│   └── PlaylistPanel.tsx    # 플레이리스트 (재생 컨트롤, 드래그 순서 변경, 삭제)
 ├── pages/           # 페이지 컴포넌트
-│   ├── HomePage.tsx         # 메인 화면 (확언 목록 + 대화 재생)
+│   ├── HomePage.tsx         # 메인 화면 (확언 입력 + 플레이리스트)
 │   └── SettingsPage.tsx     # 설정 화면 (API 키, TTS 설정, 음성 설정)
 ├── services/        # 외부 API 연동
 │   ├── gemini.ts            # Gemini API 호출
@@ -55,11 +53,10 @@ src/
 │           ├── ElevenLabsProvider.ts  # 고품질 AI 음성
 │           └── OpenAITTSProvider.ts   # OpenAI TTS
 ├── store/           # Zustand 스토어
-│   ├── affirmationStore.ts  # 확언 CRUD
 │   ├── dialogueStore.ts     # 대화 및 재생 상태
 │   └── settingsStore.ts     # 사용자 설정 + TTS Provider 설정
 ├── types/           # TypeScript 타입 정의
-│   └── index.ts             # Affirmation, Dialogue, Settings, TTSProviderType 등
+│   └── index.ts             # Dialogue, Settings, TTSProviderType 등
 ├── utils/           # 유틸리티 함수
 │   └── prompts.ts           # Gemini 프롬프트 생성
 └── theme/           # 테마 시스템
@@ -71,13 +68,6 @@ src/
 ## 주요 타입
 
 ```typescript
-// 확언
-interface Affirmation {
-  id: string;
-  text: string;
-  createdAt: number;
-}
-
 // 대화 라인
 interface DialogueLine {
   id: string;        // 라인 고유 ID (삭제/순서 변경용)
@@ -85,8 +75,13 @@ interface DialogueLine {
   text: string;
 }
 
-// 플레이리스트 모드
-type PlaylistMode = 'single' | 'all';
+// 대화 스크립트
+interface Dialogue {
+  id: string;
+  sourceAffirmation: string;  // 생성에 사용된 확언 텍스트
+  lines: DialogueLine[];
+  createdAt: number;
+}
 
 // 음성 설정
 interface VoiceSettings {
@@ -117,35 +112,40 @@ interface SpeakerVoiceSettings {
 
 // Gemini 설정
 interface GeminiSettings {
-  model: string;         // 기본값: 'gemini-2.5-flash'
+  model: string;         // 기본값: 'gemini-2.0-flash'
   temperature: number;   // 0.0~2.0 (기본 1.0)
   customPrompt: string;  // 빈 문자열이면 기본 프롬프트 사용
 }
+
+// Gemini API 원본 응답 (id 없음)
+type RawDialogueLine = Omit<DialogueLine, 'id'>;
 ```
 
 ## 상태 관리 (Zustand)
-
-### affirmationStore
-
-확언 CRUD 및 선택 상태 관리. localStorage 영속성.
-
-- `addAffirmation(text)`: 확언 추가
-- `deleteAffirmation(id)`: 확언 삭제 (**연결된 대화도 자동 삭제**)
-- `selectAffirmation(id)`: 확언 선택
 
 ### dialogueStore
 
 대화 생성/저장, 재생 상태, 플레이리스트 관리. localStorage 영속성.
 
-- `addDialogue(affirmationId, lines)`: 대화 저장 (라인에 id 자동 생성)
+**상태**:
+- `dialogues`: 대화 목록
+- `currentDialogueIndex`: 현재 재생 중인 대화 인덱스
+- `currentLineIndex`: 현재 재생 중인 라인 인덱스
+- `playbackStatus`: 재생 상태 ('idle' | 'playing' | 'paused')
+
+**액션**:
+- `addDialogue(sourceAffirmation, lines)`: 대화 1개 저장
+- `addDialogues(sourceAffirmation, dialoguesData[])`: 대화 N개 일괄 저장
 - `deleteDialogue(id)`: 대화 삭제
-- `deleteDialoguesByAffirmation(affirmationId)`: 확언에 연결된 모든 대화 삭제
-- `getDialoguesByAffirmation(id)`: 확언별 대화 목록 조회
-- `deleteLine(dialogueId, lineId)`: 특정 라인 삭제
-- `reorderLines(dialogueId, lineIds)`: 라인 순서 변경
-- `setPlaylistMode(mode)`: 플레이리스트 모드 변경 ('single' | 'all')
-- `advancePlaylist()`: 다음 대화로 이동
+- `clearAllDialogues()`: 전체 삭제
+- `reorderDialogues(dialogueIds)`: 플레이리스트 순서 변경
+- `getCurrentDialogue()`: 현재 재생 중인 대화 반환
+- `deleteLine(dialogueId, lineId)`: 대화 내 특정 라인 삭제
+- `reorderLines(dialogueId, lineIds)`: 대화 내 라인 순서 변경
+- `setCurrentDialogue(index)`: 대화 선택
+- `advanceToNextDialogue()`: 다음 대화로 이동 (연속 재생용)
 - `setPlaybackStatus(status)`: 재생 상태 변경
+- `setCurrentLineIndex(index)`: 현재 라인 인덱스 변경
 - `resetPlayback()`: 재생 초기화
 
 ### settingsStore
@@ -217,6 +217,18 @@ provider.getKoreanVoices()     // 한국어 음성 목록 (필터링된)
 
 **세션 캐싱**: ElevenLabs/OpenAI 오디오를 메모리에 캐싱 (LRU, 50개 항목)
 
+## UI 구조
+
+### 빈 상태 (검색 사이트 스타일)
+- 화면 중앙에 큰 입력 필드
+- 대화 개수 선택 버튼 (1, 2, 3, 5, 10)
+- 우측 상단 설정 아이콘
+
+### 플레이리스트 모드
+- 상단: 입력 폼 (확언 + 개수 + 생성 버튼)
+- 재생 컨트롤 (▶ ⏸ ⏹)
+- 플레이리스트 (현재 재생 강조, 드래그 순서 변경, 삭제)
+
 ## 주의사항
 
 ### Web Speech API
@@ -241,5 +253,5 @@ provider.getKoreanVoices()     // 한국어 음성 목록 (필터링된)
 ### UI 패턴
 
 - 에러: `home-page__error` 클래스 (아이콘 + 메시지 + 닫기 버튼)
-- 로딩: 스켈레톤 UI (`home-page__skeleton`) 또는 Button의 `isLoading` prop
-- Empty State: `home-page__empty` 클래스 (dashed border 스타일)
+- 로딩: Button의 `isLoading` prop 또는 진행률 바
+- Empty State: 검색 사이트 스타일 중앙 정렬

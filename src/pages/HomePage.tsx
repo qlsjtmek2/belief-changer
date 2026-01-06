@@ -1,50 +1,41 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
-import { Button, Input, AffirmationCard, DialoguePlayer, DialogueList } from '../components';
-import { useAffirmationStore, useDialogueStore, useSettingsStore } from '../store';
+import { useState, useCallback, useRef } from 'react';
+import { Button, Input, PlaylistPanel } from '../components';
+import { useDialogueStore, useSettingsStore } from '../store';
 import { generateDialogue, speakDialogue, pause, resume, stop, ttsManager } from '../services';
-import type { PlaylistMode } from '../types';
+import type { RawDialogueLine } from '../types';
 import './HomePage.css';
 
 interface HomePageProps {
   onNavigateToSettings: () => void;
 }
 
+interface GenerationProgress {
+  total: number;
+  completed: number;
+  failed: number;
+}
+
 export function HomePage({ onNavigateToSettings }: HomePageProps) {
-  const [newAffirmation, setNewAffirmation] = useState('');
+  const [affirmationText, setAffirmationText] = useState('');
+  const [dialogueCount, setDialogueCount] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const isPlayingAllRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
   // Stores
   const {
-    affirmations,
-    selectedId,
-    addAffirmation,
-    updateAffirmation,
-    deleteAffirmation,
-    selectAffirmation,
-  } = useAffirmationStore();
-
-  const {
     dialogues,
+    currentDialogueIndex,
     playbackStatus,
-    currentLineIndex,
-    playlistMode,
-    currentPlaylistIndex,
-    addDialogue,
+    addDialogues,
     deleteDialogue,
-    deleteLine,
-    reorderLines,
+    reorderDialogues,
     setCurrentDialogue,
-    getCurrentDialogue,
-    getDialoguesByAffirmation,
-    setPlaylistMode,
-    advancePlaylist,
+    advanceToNextDialogue,
     setPlaybackStatus,
     setCurrentLineIndex,
     resetPlayback,
-    resetPlaylist,
   } = useDialogueStore();
 
   const {
@@ -59,60 +50,74 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     getSpeakerVoiceMap,
   } = useSettingsStore();
 
-  const currentDialogue = getCurrentDialogue();
-  const selectedAffirmation = affirmations.find((a) => a.id === selectedId);
-  const selectedDialogues = useMemo(
-    () => (selectedId ? getDialoguesByAffirmation(selectedId) : []),
-    [selectedId, getDialoguesByAffirmation]
-  );
+  const isEmpty = dialogues.length === 0;
 
-  // 확언 추가
-  const handleAddAffirmation = () => {
-    const trimmed = newAffirmation.trim();
-    if (!trimmed) return;
-
-    addAffirmation(trimmed);
-    setNewAffirmation('');
-    setError(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAddAffirmation();
-    }
-  };
-
-  // 대화 생성
-  const handleGenerateDialogue = async () => {
-    if (!selectedAffirmation || !hasApiKey()) {
-      setError('확언을 선택하고 API 키를 설정해주세요.');
+  // N개 대화 생성
+  const handleGenerate = async () => {
+    const trimmed = affirmationText.trim();
+    if (!trimmed || !hasApiKey()) {
+      setError('확언을 입력하고 API 키를 설정해주세요.');
       return;
     }
 
     setIsGenerating(true);
     setError(null);
+    setGenerationProgress({ total: dialogueCount, completed: 0, failed: 0 });
 
     try {
-      const lines = await generateDialogue(geminiApiKey, {
-        affirmation: selectedAffirmation.text,
-        userName: userName || '사용자',
-        speakerCount: 3,
-        geminiSettings,
-      });
+      const promises = Array(dialogueCount)
+        .fill(null)
+        .map(() =>
+          generateDialogue(geminiApiKey, {
+            affirmation: trimmed,
+            userName: userName || '사용자',
+            speakerCount: 3,
+            geminiSettings,
+          })
+        );
 
-      const dialogue = addDialogue(selectedAffirmation.id, lines);
-      setCurrentDialogue(dialogue.id);
+      const results = await Promise.allSettled(promises);
+
+      const successfulDialogues: RawDialogueLine[][] = [];
+      let completed = 0;
+      let failed = 0;
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          successfulDialogues.push(result.value);
+          completed++;
+        } else {
+          failed++;
+        }
+        setGenerationProgress({ total: dialogueCount, completed, failed });
+      }
+
+      if (successfulDialogues.length > 0) {
+        addDialogues(trimmed, successfulDialogues);
+        setAffirmationText('');
+      }
+
+      if (failed > 0) {
+        setError(`${failed}개의 대화 생성에 실패했습니다.`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '대화 생성에 실패했습니다.');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(null);
     }
   };
 
-  // 개별 대화 재생
-  const playSingleDialogue = useCallback(async () => {
-    if (!currentDialogue) return;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isGenerating) {
+      e.preventDefault();
+      handleGenerate();
+    }
+  };
+
+  // 재생 (연속 재생)
+  const handlePlay = useCallback(async () => {
+    if (dialogues.length === 0) return;
 
     // 일시정지 상태면 재개
     if (playbackStatus === 'paused') {
@@ -123,13 +128,16 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
     // TTS API 키 확인 (WebSpeech 제외)
     if (!hasTTSApiKey()) {
-      setError(`${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`);
+      setError(
+        `${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`
+      );
       return;
     }
 
     setPlaybackStatus('playing');
     setCurrentLineIndex(0);
     setError(null);
+    isPlayingRef.current = true;
 
     try {
       await ttsManager.setProvider(ttsProvider.activeProvider, {
@@ -139,67 +147,11 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
       const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
 
-      await speakDialogue(currentDialogue.lines, {
-        settings: voiceSettings,
-        speakerVoiceMap,
-        loop: false,
-        onLineStart: (index) => setCurrentLineIndex(index),
-        onComplete: () => resetPlayback(),
-        onError: (err) => {
-          setError(err.message);
-          resetPlayback();
-        },
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'TTS 재생에 실패했습니다.');
-      resetPlayback();
-    }
-  }, [
-    currentDialogue,
-    playbackStatus,
-    voiceSettings,
-    ttsProvider.activeProvider,
-    hasTTSApiKey,
-    getActiveApiKey,
-    getSpeakerVoiceMap,
-    setPlaybackStatus,
-    setCurrentLineIndex,
-    resetPlayback,
-  ]);
+      // 현재 대화부터 끝까지 연속 재생
+      let currentIndex = currentDialogueIndex;
 
-  // 전체 대화 연속 재생
-  const playAllDialogues = useCallback(async () => {
-    if (dialogues.length === 0) return;
-
-    if (playbackStatus === 'paused') {
-      resume();
-      setPlaybackStatus('playing');
-      return;
-    }
-
-    if (!hasTTSApiKey()) {
-      setError(`${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`);
-      return;
-    }
-
-    setPlaylistMode('all');
-    setPlaybackStatus('playing');
-    setCurrentLineIndex(0);
-    setError(null);
-    isPlayingAllRef.current = true;
-
-    try {
-      await ttsManager.setProvider(ttsProvider.activeProvider, {
-        apiKey: getActiveApiKey(),
-        voiceSettings,
-      });
-
-      const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
-
-      // 전체 대화 순회
-      for (let i = 0; i < dialogues.length && isPlayingAllRef.current; i++) {
-        const dialogue = dialogues[i];
-        setCurrentDialogue(dialogue.id);
+      while (isPlayingRef.current && currentIndex < dialogues.length) {
+        const dialogue = dialogues[currentIndex];
 
         await new Promise<void>((resolve, reject) => {
           speakDialogue(dialogue.lines, {
@@ -212,47 +164,40 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           });
         });
 
-        if (i < dialogues.length - 1 && isPlayingAllRef.current) {
-          advancePlaylist();
+        if (!isPlayingRef.current) break;
+
+        // 다음 대화로 이동
+        const hasNext = advanceToNextDialogue();
+        if (!hasNext) {
+          // 마지막 대화 완료
+          break;
         }
+        currentIndex++;
       }
 
       resetPlayback();
-      resetPlaylist();
     } catch (err) {
-      if (isPlayingAllRef.current) {
+      if (isPlayingRef.current) {
         setError(err instanceof Error ? err.message : 'TTS 재생에 실패했습니다.');
       }
       resetPlayback();
-      resetPlaylist();
     } finally {
-      isPlayingAllRef.current = false;
+      isPlayingRef.current = false;
     }
   }, [
     dialogues,
+    currentDialogueIndex,
     playbackStatus,
     voiceSettings,
     ttsProvider.activeProvider,
     hasTTSApiKey,
     getActiveApiKey,
     getSpeakerVoiceMap,
-    setPlaylistMode,
     setPlaybackStatus,
     setCurrentLineIndex,
-    setCurrentDialogue,
-    advancePlaylist,
+    advanceToNextDialogue,
     resetPlayback,
-    resetPlaylist,
   ]);
-
-  // 재생 핸들러 (모드에 따라 분기)
-  const handlePlay = useCallback(() => {
-    if (playlistMode === 'all') {
-      playAllDialogues();
-    } else {
-      playSingleDialogue();
-    }
-  }, [playlistMode, playAllDialogues, playSingleDialogue]);
 
   const handlePause = useCallback(() => {
     pause();
@@ -260,182 +205,220 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   }, [setPlaybackStatus]);
 
   const handleStop = useCallback(() => {
-    isPlayingAllRef.current = false;
+    isPlayingRef.current = false;
     stop();
     resetPlayback();
-    resetPlaylist();
-  }, [resetPlayback, resetPlaylist]);
+  }, [resetPlayback]);
 
-  // 모드 변경 핸들러
-  const handleModeChange = (mode: PlaylistMode) => {
-    if (playbackStatus !== 'idle') {
-      handleStop();
-    }
-    setPlaylistMode(mode);
-    setIsEditMode(false);
-
-    if (mode === 'all' && dialogues.length > 0) {
-      setCurrentDialogue(dialogues[0].id);
-    } else if (mode === 'single' && selectedDialogues.length > 0) {
-      setCurrentDialogue(selectedDialogues[0].id);
-    }
-  };
-
-  // 라인 삭제 핸들러
-  const handleDeleteLine = useCallback((lineId: string) => {
-    if (currentDialogue) {
-      deleteLine(currentDialogue.id, lineId);
-    }
-  }, [currentDialogue, deleteLine]);
-
-  // 라인 순서 변경 핸들러
-  const handleReorderLines = useCallback((lineIds: string[]) => {
-    if (currentDialogue) {
-      reorderLines(currentDialogue.id, lineIds);
-    }
-  }, [currentDialogue, reorderLines]);
-
-  // 대화 삭제 핸들러
-  const handleDeleteDialogue = useCallback((dialogueId: string) => {
-    deleteDialogue(dialogueId);
-    if (selectedDialogues.length > 1) {
-      const remaining = selectedDialogues.filter((d) => d.id !== dialogueId);
-      if (remaining.length > 0) {
-        setCurrentDialogue(remaining[0].id);
+  // 대화 선택
+  const handleSelectDialogue = useCallback(
+    (index: number) => {
+      if (playbackStatus !== 'idle') {
+        handleStop();
       }
-    }
-  }, [deleteDialogue, selectedDialogues, setCurrentDialogue]);
+      setCurrentDialogue(index);
+    },
+    [playbackStatus, handleStop, setCurrentDialogue]
+  );
 
-  // 확언 삭제 핸들러 (재생 중이면 TTS 중지)
-  const handleDeleteAffirmation = useCallback((id: string) => {
-    // 삭제할 확언에 연결된 대화가 현재 재생 중인지 확인
-    const dialoguesForAffirmation = getDialoguesByAffirmation(id);
-    const isPlayingDeletedDialogue = dialoguesForAffirmation.some(
-      (d) => d.id === currentDialogue?.id && playbackStatus !== 'idle'
+  // 대화 삭제
+  const handleDeleteDialogue = useCallback(
+    (id: string) => {
+      const deletingIndex = dialogues.findIndex((d) => d.id === id);
+      const isPlayingDeleted =
+        deletingIndex === currentDialogueIndex && playbackStatus !== 'idle';
+
+      if (isPlayingDeleted) {
+        handleStop();
+      }
+
+      deleteDialogue(id);
+    },
+    [dialogues, currentDialogueIndex, playbackStatus, handleStop, deleteDialogue]
+  );
+
+  // 빈 상태 UI (검색 사이트 스타일)
+  if (isEmpty && !isGenerating) {
+    return (
+      <div className="home-page home-page--empty">
+        {/* Background Effects */}
+        <div className="home-page__bg" aria-hidden="true">
+          <div className="home-page__orb home-page__orb--1" />
+          <div className="home-page__orb home-page__orb--2" />
+          <div className="home-page__orb home-page__orb--3" />
+        </div>
+
+        {/* Settings Button */}
+        <button
+          type="button"
+          className="home-page__settings-btn home-page__settings-btn--corner"
+          onClick={onNavigateToSettings}
+          aria-label="설정"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+        </button>
+
+        {/* Centered Content */}
+        <div className="home-page__center">
+          <div className="home-page__brand">
+            <h1 className="home-page__logo">Belief Changer</h1>
+            <p className="home-page__tagline">당신의 확언을 대화로 바꿔드립니다</p>
+          </div>
+
+          <div className="home-page__search-box">
+            <Input
+              placeholder="확언을 입력하세요... 예: 나는 매일 운동을 즐긴다"
+              value={affirmationText}
+              onChange={(e) => setAffirmationText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              fullWidth
+              className="home-page__search-input"
+            />
+
+            <div className="home-page__count-selector">
+              <span className="home-page__count-label">대화 개수</span>
+              <div className="home-page__count-buttons">
+                {[1, 2, 3, 5, 10].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    className={`home-page__count-btn ${dialogueCount === count ? 'home-page__count-btn--active' : ''}`}
+                    onClick={() => setDialogueCount(count)}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleGenerate}
+              disabled={!affirmationText.trim() || !hasApiKey()}
+              isLoading={isGenerating}
+            >
+              대화 생성하기 ({dialogueCount}개)
+            </Button>
+
+            {!hasApiKey() && (
+              <p className="home-page__api-hint">
+                대화 생성을 위해{' '}
+                <button type="button" className="home-page__link" onClick={onNavigateToSettings}>
+                  설정
+                </button>
+                에서 API 키를 입력해주세요.
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="home-page__error home-page__error--centered" role="alert">
+              <span>{error}</span>
+              <button
+                type="button"
+                className="home-page__error-close"
+                onClick={() => setError(null)}
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     );
+  }
 
-    // 재생 중이면 먼저 정지
-    if (isPlayingDeletedDialogue) {
-      isPlayingAllRef.current = false;
-      stop();
-      resetPlayback();
-      resetPlaylist();
-    }
-
-    // 확언 삭제 (연결된 대화도 함께 삭제됨 - affirmationStore에서 처리)
-    deleteAffirmation(id);
-  }, [
-    getDialoguesByAffirmation,
-    currentDialogue,
-    playbackStatus,
-    resetPlayback,
-    resetPlaylist,
-    deleteAffirmation,
-  ]);
-
-  // 플레이리스트 정보
-  const playlistInfo = playlistMode === 'all' && dialogues.length > 0
-    ? { current: currentPlaylistIndex + 1, total: dialogues.length }
-    : undefined;
-
+  // 플레이리스트 모드 UI
   return (
-    <div className="home-page">
+    <div className="home-page home-page--playlist">
       {/* Background Effects */}
       <div className="home-page__bg" aria-hidden="true">
         <div className="home-page__orb home-page__orb--1" />
         <div className="home-page__orb home-page__orb--2" />
       </div>
 
-      {/* Header */}
-      <header className="home-page__header">
-        <div className="home-page__title-group">
-          <h1 className="home-page__title">Belief Changer</h1>
-          <p className="home-page__subtitle">당신의 확언을 대화로</p>
-        </div>
-        <button
-          type="button"
-          className="home-page__settings-btn"
-          onClick={onNavigateToSettings}
-          aria-label="설정"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-          </svg>
-        </button>
-      </header>
+      {/* Settings Button */}
+      <button
+        type="button"
+        className="home-page__settings-btn home-page__settings-btn--corner"
+        onClick={onNavigateToSettings}
+        aria-label="설정"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+      </button>
 
       {/* Main Content */}
-      <main className="home-page__main">
+      <div className="home-page__container">
         {/* Input Section */}
         <section className="home-page__input-section">
-          <div className="home-page__input-wrapper">
+          <div className="home-page__input-row">
             <Input
-              placeholder="새로운 확언을 입력하세요... 예: 나는 운동을 좋아한다"
-              value={newAffirmation}
-              onChange={(e) => setNewAffirmation(e.target.value)}
+              placeholder="새 확언 입력..."
+              value={affirmationText}
+              onChange={(e) => setAffirmationText(e.target.value)}
               onKeyDown={handleKeyDown}
               fullWidth
             />
+            <div className="home-page__count-compact">
+              <select
+                value={dialogueCount}
+                onChange={(e) => setDialogueCount(Number(e.target.value))}
+                className="home-page__count-select"
+              >
+                {[1, 2, 3, 5, 10].map((count) => (
+                  <option key={count} value={count}>
+                    {count}개
+                  </option>
+                ))}
+              </select>
+            </div>
             <Button
               variant="primary"
-              onClick={handleAddAffirmation}
-              disabled={!newAffirmation.trim()}
+              onClick={handleGenerate}
+              disabled={!affirmationText.trim() || !hasApiKey() || isGenerating}
+              isLoading={isGenerating}
             >
-              추가
+              생성
             </Button>
           </div>
-          {!hasApiKey() && (
-            <p className="home-page__api-hint">
-              대화 생성을 위해{' '}
-              <button type="button" className="home-page__link" onClick={onNavigateToSettings}>
-                설정
-              </button>
-              에서 API 키를 입력해주세요.
-            </p>
+
+          {/* 생성 진행률 */}
+          {generationProgress && (
+            <div className="home-page__progress">
+              <div className="home-page__progress-bar">
+                <div
+                  className="home-page__progress-fill"
+                  style={{
+                    width: `${((generationProgress.completed + generationProgress.failed) / generationProgress.total) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="home-page__progress-text">
+                {generationProgress.completed}/{generationProgress.total} 생성 완료
+                {generationProgress.failed > 0 && ` (${generationProgress.failed} 실패)`}
+              </span>
+            </div>
           )}
         </section>
-
-        {/* Mode Switch */}
-        {dialogues.length > 0 && (
-          <div className="home-page__mode-switch">
-            <button
-              type="button"
-              className={`home-page__mode-btn ${playlistMode === 'single' ? 'home-page__mode-btn--active' : ''}`}
-              onClick={() => handleModeChange('single')}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-              </svg>
-              개별 재생
-            </button>
-            <button
-              type="button"
-              className={`home-page__mode-btn ${playlistMode === 'all' ? 'home-page__mode-btn--active' : ''}`}
-              onClick={() => handleModeChange('all')}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-              전체 재생 ({dialogues.length}개)
-            </button>
-          </div>
-        )}
 
         {/* Error Message */}
         {error && (
           <div className="home-page__error" role="alert">
-            <svg className="home-page__error-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            <span className="home-page__error-text">{error}</span>
+            <span>{error}</span>
             <button
               type="button"
               className="home-page__error-close"
@@ -450,198 +433,19 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           </div>
         )}
 
-        {/* Two Column Layout */}
-        <div className="home-page__content">
-          {/* Affirmation List */}
-          <section className="home-page__affirmations">
-            <h2 className="home-page__section-title">나의 확언</h2>
-            {affirmations.length === 0 ? (
-              <div className="home-page__empty">
-                <p>아직 확언이 없습니다.</p>
-                <p className="home-page__empty-hint">위에서 새로운 확언을 추가해보세요.</p>
-              </div>
-            ) : (
-              <div className="home-page__card-list">
-                {affirmations.map((affirmation) => (
-                  <AffirmationCard
-                    key={affirmation.id}
-                    affirmation={affirmation}
-                    isSelected={affirmation.id === selectedId}
-                    onSelect={(id) => {
-                      selectAffirmation(id);
-                      if (playlistMode === 'single') {
-                        const dialoguesForAffirmation = getDialoguesByAffirmation(id);
-                        if (dialoguesForAffirmation.length > 0) {
-                          setCurrentDialogue(dialoguesForAffirmation[0].id);
-                        } else {
-                          setCurrentDialogue(null);
-                        }
-                      }
-                    }}
-                    onEdit={updateAffirmation}
-                    onDelete={handleDeleteAffirmation}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Dialogue Section */}
-          <section className="home-page__dialogue">
-            <div className="home-page__dialogue-header">
-              <h2 className="home-page__section-title">
-                {playlistMode === 'all' ? '전체 대화 재생' : '대화 재생'}
-              </h2>
-              {currentDialogue && playbackStatus === 'idle' && (
-                <button
-                  type="button"
-                  className={`home-page__edit-toggle ${isEditMode ? 'home-page__edit-toggle--active' : ''}`}
-                  onClick={() => setIsEditMode(!isEditMode)}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                  편집
-                </button>
-              )}
-            </div>
-
-            {playlistMode === 'all' ? (
-              // 전체 재생 모드
-              <div className="home-page__dialogue-content">
-                {dialogues.length === 0 ? (
-                  <div className="home-page__empty">
-                    <p>생성된 대화가 없습니다.</p>
-                    <p className="home-page__empty-hint">확언을 선택하고 대화를 생성해보세요.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* 현재 재생 중인 확언 표시 */}
-                    {currentDialogue && (() => {
-                      const currentAffirmation = affirmations.find(a => a.id === currentDialogue.affirmationId);
-                      return currentAffirmation ? (
-                        <div className="home-page__selected-affirmation">
-                          <span className="home-page__selected-label">
-                            현재 대화 ({currentPlaylistIndex + 1}/{dialogues.length})
-                          </span>
-                          <p className="home-page__selected-text">{currentAffirmation.text}</p>
-                        </div>
-                      ) : null;
-                    })()}
-
-                    {/* 대화 목록 - 전체 모드용 */}
-                    <div className="home-page__playlist-list">
-                      {dialogues.map((dialogue, index) => {
-                        const isCurrentDialogue = dialogue.id === currentDialogue?.id;
-                        const dialogueAffirmation = affirmations.find(a => a.id === dialogue.affirmationId);
-                        return (
-                          <div
-                            key={dialogue.id}
-                            className={`home-page__playlist-item ${isCurrentDialogue ? 'home-page__playlist-item--active' : ''}`}
-                          >
-                            <span className="home-page__playlist-item-number">{index + 1}</span>
-                            <span className="home-page__playlist-item-text">
-                              {dialogueAffirmation?.text || '확언 없음'}
-                            </span>
-                            {isCurrentDialogue && playbackStatus === 'playing' && (
-                              <span className="home-page__playlist-item-playing">
-                                <span className="home-page__wave" />
-                                <span className="home-page__wave" />
-                                <span className="home-page__wave" />
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* DialoguePlayer */}
-                    {currentDialogue && (
-                      <DialoguePlayer
-                        lines={currentDialogue.lines}
-                        currentLineIndex={currentLineIndex}
-                        playbackStatus={playbackStatus}
-                        onPlay={handlePlay}
-                        onPause={handlePause}
-                        onStop={handleStop}
-                        editable={isEditMode}
-                        onDeleteLine={handleDeleteLine}
-                        onReorderLines={handleReorderLines}
-                        playlistInfo={playlistInfo}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            ) : selectedAffirmation ? (
-              // 개별 재생 모드
-              <div className="home-page__dialogue-content">
-                <div className="home-page__selected-affirmation">
-                  <span className="home-page__selected-label">선택된 확언</span>
-                  <p className="home-page__selected-text">{selectedAffirmation.text}</p>
-                </div>
-
-                {selectedDialogues.length > 0 && (
-                  <DialogueList
-                    dialogues={selectedDialogues}
-                    selectedDialogueId={currentDialogue?.id ?? null}
-                    onSelect={setCurrentDialogue}
-                    onDelete={handleDeleteDialogue}
-                    onAddNew={handleGenerateDialogue}
-                    isGenerating={isGenerating}
-                  />
-                )}
-
-                {selectedDialogues.length === 0 ? (
-                  isGenerating ? (
-                    <div className="home-page__loading">
-                      <div className="home-page__loading-header">
-                        <div className="home-page__loading-spinner" />
-                        <span>AI가 대화를 생성하고 있습니다...</span>
-                      </div>
-                      <div className="home-page__skeleton">
-                        <div className="home-page__skeleton-line home-page__skeleton-line--short" />
-                        <div className="home-page__skeleton-line" />
-                        <div className="home-page__skeleton-line home-page__skeleton-line--medium" />
-                        <div className="home-page__skeleton-line home-page__skeleton-line--short" />
-                        <div className="home-page__skeleton-line" />
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      onClick={handleGenerateDialogue}
-                      disabled={!hasApiKey()}
-                    >
-                      대화 생성하기
-                    </Button>
-                  )
-                ) : currentDialogue && currentDialogue.affirmationId === selectedId ? (
-                  <DialoguePlayer
-                    lines={currentDialogue.lines}
-                    currentLineIndex={currentLineIndex}
-                    playbackStatus={playbackStatus}
-                    onPlay={handlePlay}
-                    onPause={handlePause}
-                    onStop={handleStop}
-                    editable={isEditMode}
-                    onDeleteLine={handleDeleteLine}
-                    onReorderLines={handleReorderLines}
-                  />
-                ) : null}
-              </div>
-            ) : (
-              <div className="home-page__empty">
-                <p>확언을 선택해주세요.</p>
-                <p className="home-page__empty-hint">왼쪽에서 확언을 클릭하면 대화를 생성할 수 있습니다.</p>
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
+        {/* Playlist Panel */}
+        <PlaylistPanel
+          dialogues={dialogues}
+          currentIndex={currentDialogueIndex}
+          playbackStatus={playbackStatus}
+          onSelect={handleSelectDialogue}
+          onDelete={handleDeleteDialogue}
+          onReorder={reorderDialogues}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onStop={handleStop}
+        />
+      </div>
     </div>
   );
 }

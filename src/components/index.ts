@@ -8,10 +8,4 @@ export type { ButtonProps } from './Button';
 export { Input } from './Input';
 export type { InputProps, TextareaProps } from './Input';
 
-export { AffirmationCard } from './AffirmationCard';
-export type { AffirmationCardProps } from './AffirmationCard';
-
-export { DialoguePlayer } from './DialoguePlayer';
-export type { DialoguePlayerProps } from './DialoguePlayer';
-
-export { DialogueList } from './DialogueList';
+export { PlaylistPanel } from './PlaylistPanel';

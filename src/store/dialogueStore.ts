@@ -1,43 +1,33 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type {
-  Dialogue,
-  DialogueLine,
-  PlaybackStatus,
-  PlaylistMode,
-  RawDialogueLine,
-} from '../types';
+import type { Dialogue, DialogueLine, PlaybackStatus, RawDialogueLine } from '../types';
 
 interface DialogueState {
   dialogues: Dialogue[];
-  currentDialogueId: string | null;
-  playbackStatus: PlaybackStatus;
+  currentDialogueIndex: number;
   currentLineIndex: number;
-
-  // Playlist state
-  playlistMode: PlaylistMode;
-  currentPlaylistIndex: number;
+  playbackStatus: PlaybackStatus;
 
   // Actions
-  addDialogue: (affirmationId: string, lines: RawDialogueLine[]) => Dialogue;
+  addDialogue: (sourceAffirmation: string, lines: RawDialogueLine[]) => Dialogue;
+  addDialogues: (
+    sourceAffirmation: string,
+    dialoguesData: RawDialogueLine[][]
+  ) => Dialogue[];
   deleteDialogue: (id: string) => void;
-  deleteDialoguesByAffirmation: (affirmationId: string) => void;
-  getDialoguesByAffirmation: (affirmationId: string) => Dialogue[];
-  setCurrentDialogue: (id: string | null) => void;
+  clearAllDialogues: () => void;
+  reorderDialogues: (dialogueIds: string[]) => void;
+
+  // Getters
   getCurrentDialogue: () => Dialogue | null;
 
   // Line editing actions
   deleteLine: (dialogueId: string, lineId: string) => void;
   reorderLines: (dialogueId: string, lineIds: string[]) => void;
 
-  // Playlist actions
-  setPlaylistMode: (mode: PlaylistMode) => void;
-  buildPlaylist: () => void;
-  advancePlaylist: () => boolean;
-  resetPlaylist: () => void;
-  getPlaylistDialogues: () => Dialogue[];
-
   // Playback controls
+  setCurrentDialogue: (index: number) => void;
+  advanceToNextDialogue: () => boolean;
   setPlaybackStatus: (status: PlaybackStatus) => void;
   setCurrentLineIndex: (index: number) => void;
   resetPlayback: () => void;
@@ -62,75 +52,150 @@ const migrateDialogues = (dialogues: Dialogue[]): Dialogue[] => {
   }));
 };
 
+// 기존 affirmationId를 sourceAffirmation으로 마이그레이션
+const migrateToSourceAffirmation = (dialogues: unknown[]): Dialogue[] => {
+  // 기존 확언 데이터 가져오기
+  let affirmationMap: Record<string, string> = {};
+  try {
+    const oldAffirmations = localStorage.getItem('belief-changer-affirmations');
+    if (oldAffirmations) {
+      const parsed = JSON.parse(oldAffirmations);
+      const affirmations = parsed.state?.affirmations || parsed.affirmations || [];
+      affirmationMap = affirmations.reduce(
+        (acc: Record<string, string>, aff: { id: string; text: string }) => {
+          acc[aff.id] = aff.text;
+          return acc;
+        },
+        {}
+      );
+    }
+  } catch {
+    // 파싱 실패 시 무시
+  }
+
+  return dialogues.map((dialogue: unknown) => {
+    const d = dialogue as {
+      id: string;
+      affirmationId?: string;
+      sourceAffirmation?: string;
+      lines: DialogueLine[];
+      createdAt: number;
+    };
+
+    // 이미 sourceAffirmation이 있으면 그대로 사용
+    if (d.sourceAffirmation) {
+      return d as Dialogue;
+    }
+
+    // affirmationId가 있으면 변환
+    const sourceText = d.affirmationId
+      ? affirmationMap[d.affirmationId] || '(이전 확언)'
+      : '(알 수 없음)';
+
+    return {
+      id: d.id,
+      sourceAffirmation: sourceText,
+      lines: d.lines,
+      createdAt: d.createdAt,
+    };
+  });
+};
+
 export const useDialogueStore = create<DialogueState>()(
   persist(
     (set, get) => ({
       dialogues: [],
-      currentDialogueId: null,
-      playbackStatus: 'idle',
+      currentDialogueIndex: 0,
       currentLineIndex: 0,
-      playlistMode: 'single',
-      currentPlaylistIndex: 0,
+      playbackStatus: 'idle',
 
-      addDialogue: (affirmationId: string, lines: RawDialogueLine[]) => {
+      addDialogue: (sourceAffirmation: string, lines: RawDialogueLine[]) => {
         const linesWithId = addIdsToLines(lines);
         const newDialogue: Dialogue = {
           id: crypto.randomUUID(),
-          affirmationId,
+          sourceAffirmation,
           lines: linesWithId,
           createdAt: Date.now(),
         };
         set((state) => ({
-          dialogues: [newDialogue, ...state.dialogues],
-          currentDialogueId: newDialogue.id,
+          dialogues: [...state.dialogues, newDialogue],
         }));
         return newDialogue;
       },
 
-      deleteDialogue: (id: string) => {
-        set((state) => ({
-          dialogues: state.dialogues.filter((d) => d.id !== id),
-          currentDialogueId:
-            state.currentDialogueId === id ? null : state.currentDialogueId,
+      addDialogues: (
+        sourceAffirmation: string,
+        dialoguesData: RawDialogueLine[][]
+      ) => {
+        const newDialogues: Dialogue[] = dialoguesData.map((lines) => ({
+          id: crypto.randomUUID(),
+          sourceAffirmation,
+          lines: addIdsToLines(lines),
+          createdAt: Date.now(),
         }));
+        set((state) => ({
+          dialogues: [...state.dialogues, ...newDialogues],
+        }));
+        return newDialogues;
       },
 
-      deleteDialoguesByAffirmation: (affirmationId: string) => {
+      deleteDialogue: (id: string) => {
         set((state) => {
-          const remainingDialogues = state.dialogues.filter(
-            (d) => d.affirmationId !== affirmationId
-          );
+          const newDialogues = state.dialogues.filter((d) => d.id !== id);
+          const deletedIndex = state.dialogues.findIndex((d) => d.id === id);
 
-          // 현재 재생 중인 대화가 삭제 대상인지 확인
-          const currentDialogue = state.dialogues.find(
-            (d) => d.id === state.currentDialogueId
-          );
-          const isCurrentDeleted = currentDialogue?.affirmationId === affirmationId;
+          // 현재 재생 중인 대화가 삭제된 경우 인덱스 조정
+          let newIndex = state.currentDialogueIndex;
+          if (deletedIndex <= state.currentDialogueIndex) {
+            newIndex = Math.max(0, state.currentDialogueIndex - 1);
+          }
+          if (newDialogues.length === 0) {
+            newIndex = 0;
+          }
 
           return {
-            dialogues: remainingDialogues,
-            currentDialogueId: isCurrentDeleted ? null : state.currentDialogueId,
-            playbackStatus: isCurrentDeleted ? 'idle' : state.playbackStatus,
-            currentLineIndex: isCurrentDeleted ? 0 : state.currentLineIndex,
+            dialogues: newDialogues,
+            currentDialogueIndex: newIndex,
+            playbackStatus:
+              deletedIndex === state.currentDialogueIndex ? 'idle' : state.playbackStatus,
+            currentLineIndex:
+              deletedIndex === state.currentDialogueIndex ? 0 : state.currentLineIndex,
           };
         });
       },
 
-      getDialoguesByAffirmation: (affirmationId: string) => {
-        return get().dialogues.filter((d) => d.affirmationId === affirmationId);
+      clearAllDialogues: () => {
+        set({
+          dialogues: [],
+          currentDialogueIndex: 0,
+          currentLineIndex: 0,
+          playbackStatus: 'idle',
+        });
       },
 
-      setCurrentDialogue: (id: string | null) => {
-        set({
-          currentDialogueId: id,
-          playbackStatus: 'idle',
-          currentLineIndex: 0,
+      reorderDialogues: (dialogueIds: string[]) => {
+        set((state) => {
+          const dialogueMap = new Map(state.dialogues.map((d) => [d.id, d]));
+          const reordered = dialogueIds
+            .map((id) => dialogueMap.get(id))
+            .filter((d): d is Dialogue => d !== undefined);
+
+          // 현재 재생 중인 대화의 새 인덱스 찾기
+          const currentDialogue = state.dialogues[state.currentDialogueIndex];
+          const newIndex = currentDialogue
+            ? reordered.findIndex((d) => d.id === currentDialogue.id)
+            : 0;
+
+          return {
+            dialogues: reordered,
+            currentDialogueIndex: newIndex >= 0 ? newIndex : 0,
+          };
         });
       },
 
       getCurrentDialogue: () => {
-        const { dialogues, currentDialogueId } = get();
-        return dialogues.find((d) => d.id === currentDialogueId) ?? null;
+        const { dialogues, currentDialogueIndex } = get();
+        return dialogues[currentDialogueIndex] ?? null;
       },
 
       // Line editing actions
@@ -159,54 +224,38 @@ export const useDialogueStore = create<DialogueState>()(
         }));
       },
 
-      // Playlist actions
-      setPlaylistMode: (mode: PlaylistMode) => {
-        set({ playlistMode: mode });
-        if (mode === 'all') {
-          get().buildPlaylist();
-        }
-      },
-
-      buildPlaylist: () => {
+      // Playback controls
+      setCurrentDialogue: (index: number) => {
         const { dialogues } = get();
-        if (dialogues.length === 0) return;
-
-        set({
-          currentPlaylistIndex: 0,
-          currentDialogueId: dialogues[0].id,
-          currentLineIndex: 0,
-        });
+        if (index >= 0 && index < dialogues.length) {
+          set({
+            currentDialogueIndex: index,
+            currentLineIndex: 0,
+            playbackStatus: 'idle',
+          });
+        }
       },
 
-      advancePlaylist: () => {
-        const { dialogues, currentPlaylistIndex, playlistMode } = get();
-        if (playlistMode !== 'all') return false;
+      advanceToNextDialogue: () => {
+        const { dialogues, currentDialogueIndex } = get();
+        const nextIndex = currentDialogueIndex + 1;
 
-        const nextIndex = currentPlaylistIndex + 1;
         if (nextIndex >= dialogues.length) {
-          return false;
+          // 마지막 대화 → 처음으로 돌아가기 (반복 재생)
+          set({
+            currentDialogueIndex: 0,
+            currentLineIndex: 0,
+          });
+          return false; // 더 이상 다음 대화 없음 (한 사이클 완료)
         }
 
         set({
-          currentPlaylistIndex: nextIndex,
-          currentDialogueId: dialogues[nextIndex].id,
+          currentDialogueIndex: nextIndex,
           currentLineIndex: 0,
         });
         return true;
       },
 
-      resetPlaylist: () => {
-        set({
-          currentPlaylistIndex: 0,
-          playlistMode: 'single',
-        });
-      },
-
-      getPlaylistDialogues: () => {
-        return get().dialogues;
-      },
-
-      // Playback controls
       setPlaybackStatus: (status: PlaybackStatus) => {
         set({ playbackStatus: status });
       },
@@ -229,12 +278,17 @@ export const useDialogueStore = create<DialogueState>()(
       }),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<DialogueState> | undefined;
+        let dialogues = persisted?.dialogues ?? [];
+
+        // 마이그레이션: affirmationId → sourceAffirmation
+        dialogues = migrateToSourceAffirmation(dialogues);
+
+        // 마이그레이션: 라인에 id 추가
+        dialogues = migrateDialogues(dialogues);
+
         return {
           ...currentState,
-          ...persisted,
-          dialogues: persisted?.dialogues
-            ? migrateDialogues(persisted.dialogues)
-            : [],
+          dialogues,
         };
       },
     }
