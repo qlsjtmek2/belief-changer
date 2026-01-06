@@ -44,8 +44,8 @@
 > **활성화 해야 할 스킬**:
 > - `dev-toolkit:systematic-debugging` - 브라우저 호환성 이슈 디버깅
 
-- [ ] Web Speech API 래퍼 구현 (speak, getVoices)
-- [ ] 순차 재생 로직 구현 (화자별 다른 목소리)
+- [x] Web Speech API 래퍼 구현 (speak, getVoices)
+- [x] 순차 재생 로직 구현 (화자별 다른 목소리)
 
 ## Phase 5: UI 컴포넌트
 
@@ -53,25 +53,25 @@
 > - `dev-toolkit:frontend-design` - 고품질 UI 컴포넌트 생성
 > - `dev-toolkit:ui-ux-design-architect` - 컴포넌트 UX 설계
 
-- [ ] AffirmationCard - 확언 표시/편집/삭제
-- [ ] DialoguePlayer - 대화 재생 UI (재생/정지, 진행 표시)
-- [ ] VoiceSelector - 화자별 음성 선택
+- [x] AffirmationCard - 확언 표시/편집/삭제
+- [x] DialoguePlayer - 대화 재생 UI (재생/정지, 진행 표시)
+- [x] VoiceSelector - 화자별 음성 선택
 
 ## Phase 6: 페이지 조립
 
 > **활성화 해야 할 스킬**:
 > - `dev-toolkit:frontend-design` - 페이지 레이아웃 및 UI
 
-- [ ] HomePage - 확언 입력, 대화 생성/재생
-- [ ] SettingsPage - API 키 입력, 음성 설정, 사용자 이름
+- [x] HomePage - 확언 입력, 대화 생성/재생
+- [x] SettingsPage - API 키 입력, 음성 설정, 사용자 이름
 
 ## Phase 7: 마무리
 
 > **활성화 해야 할 스킬**:
 > - `dev-toolkit:code-refactoring` - 코드 정리 및 개선
 
-- [ ] 로딩/에러 상태 UI 개선
-- [ ] CLAUDE.md 프로젝트 문서 작성
+- [x] 로딩/에러 상태 UI 개선
+- [x] CLAUDE.md 프로젝트 문서 작성
 
 ---
 
@@ -79,15 +79,15 @@
 
 | Phase | 상태 | 완료 |
 |-------|------|------|
-| Phase 1: 프로젝트 초기화 | 대기 | 0/4 |
-| Phase 2: 상태관리 및 타입 | 대기 | 0/4 |
-| Phase 3: Gemini API 연동 | 대기 | 0/2 |
-| Phase 4: TTS 서비스 | 대기 | 0/2 |
-| Phase 5: UI 컴포넌트 | 대기 | 0/3 |
-| Phase 6: 페이지 조립 | 대기 | 0/2 |
-| Phase 7: 마무리 | 대기 | 0/2 |
+| Phase 1: 프로젝트 초기화 | ✅ 완료 | 4/4 |
+| Phase 2: 상태관리 및 타입 | ✅ 완료 | 4/4 |
+| Phase 3: Gemini API 연동 | ✅ 완료 | 2/2 |
+| Phase 4: TTS 서비스 | ✅ 완료 | 2/2 |
+| Phase 5: UI 컴포넌트 | ✅ 완료 | 3/3 |
+| Phase 6: 페이지 조립 | ✅ 완료 | 2/2 |
+| Phase 7: 마무리 | ✅ 완료 | 2/2 |
 
-**전체 진행률**: 0/19 (0%)
+**전체 진행률**: 19/19 (100%) 🎉
 
 ---
 

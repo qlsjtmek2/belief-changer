@@ -178,7 +178,23 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         {/* Error Message */}
         {error && (
           <div className="home-page__error" role="alert">
-            {error}
+            <svg className="home-page__error-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="home-page__error-text">{error}</span>
+            <button
+              type="button"
+              className="home-page__error-close"
+              onClick={() => setError(null)}
+              aria-label="에러 닫기"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         )}
 
@@ -220,16 +236,31 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                 </div>
 
                 {!currentDialogue || currentDialogue.affirmationId !== selectedId ? (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    isLoading={isGenerating}
-                    onClick={handleGenerateDialogue}
-                    disabled={!hasApiKey()}
-                  >
-                    {isGenerating ? '대화 생성 중...' : '대화 생성하기'}
-                  </Button>
+                  isGenerating ? (
+                    <div className="home-page__loading">
+                      <div className="home-page__loading-header">
+                        <div className="home-page__loading-spinner" />
+                        <span>AI가 대화를 생성하고 있습니다...</span>
+                      </div>
+                      <div className="home-page__skeleton">
+                        <div className="home-page__skeleton-line home-page__skeleton-line--short" />
+                        <div className="home-page__skeleton-line" />
+                        <div className="home-page__skeleton-line home-page__skeleton-line--medium" />
+                        <div className="home-page__skeleton-line home-page__skeleton-line--short" />
+                        <div className="home-page__skeleton-line" />
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      onClick={handleGenerateDialogue}
+                      disabled={!hasApiKey()}
+                    >
+                      대화 생성하기
+                    </Button>
+                  )
                 ) : (
                   <DialoguePlayer
                     lines={currentDialogue.lines}
