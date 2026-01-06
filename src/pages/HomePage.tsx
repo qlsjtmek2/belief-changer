@@ -42,6 +42,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     hasApiKey,
     getActiveApiKey,
     hasTTSApiKey,
+    getSpeakerVoiceMap,
   } = useSettingsStore();
 
   const currentDialogue = getCurrentDialogue();
@@ -118,8 +119,12 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         voiceSettings,
       });
 
+      // 화자별 선택된 음성 맵 가져오기
+      const speakerVoiceMap = getSpeakerVoiceMap(ttsProvider.activeProvider);
+
       await speakDialogue(currentDialogue.lines, {
         settings: voiceSettings,
+        speakerVoiceMap,
         onLineStart: (index) => setCurrentLineIndex(index),
         onComplete: () => resetPlayback(),
         onError: (err) => {
@@ -138,6 +143,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     ttsProvider.activeProvider,
     hasTTSApiKey,
     getActiveApiKey,
+    getSpeakerVoiceMap,
     setPlaybackStatus,
     setCurrentLineIndex,
     resetPlayback,

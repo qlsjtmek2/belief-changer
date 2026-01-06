@@ -1,7 +1,11 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Button, Input } from '../components';
 import { useSettingsStore } from '../store';
+import { ttsManager, type TTSVoice } from '../services/tts';
 import type { TTSProviderType } from '../types';
 import './SettingsPage.css';
+
+const SPEAKER_LABELS = ['화자 1', '화자 2', '화자 3'];
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -19,6 +23,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     geminiApiKey,
     voiceSettings,
     ttsProvider,
+    speakerVoices,
     setUserName,
     setGeminiApiKey,
     updateVoiceSettings,
@@ -26,7 +31,49 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setActiveProvider,
     setElevenLabsApiKey,
     setOpenAIApiKey,
+    setSpeakerVoice,
+    getActiveApiKey,
   } = useSettingsStore();
+
+  const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+
+  // Provider 변경 시 한국어 음성 목록 로드
+  const loadVoices = useCallback(async () => {
+    setIsLoadingVoices(true);
+    try {
+      const apiKey = getActiveApiKey();
+      await ttsManager.setProvider(ttsProvider.activeProvider, {
+        apiKey,
+        voiceSettings,
+      });
+
+      const provider = ttsManager.getProvider();
+      if (provider) {
+        const voices = await provider.getKoreanVoices();
+        setAvailableVoices(voices);
+      }
+    } catch (error) {
+      console.warn('음성 목록 로드 실패:', error);
+      setAvailableVoices([]);
+    } finally {
+      setIsLoadingVoices(false);
+    }
+  }, [ttsProvider.activeProvider, getActiveApiKey, voiceSettings]);
+
+  useEffect(() => {
+    loadVoices();
+  }, [loadVoices]);
+
+  // 화자별 음성 선택 핸들러
+  const handleSpeakerVoiceChange = (speakerIndex: number, voiceId: string) => {
+    setSpeakerVoice(ttsProvider.activeProvider, String(speakerIndex), voiceId);
+  };
+
+  // 현재 Provider의 화자별 선택된 음성 ID 가져오기
+  const getSelectedVoiceId = (speakerIndex: number): string => {
+    return speakerVoices[ttsProvider.activeProvider]?.[String(speakerIndex)] ?? '';
+  };
 
   return (
     <div className="settings-page">
@@ -172,6 +219,49 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 </p>
               </div>
             )}
+
+            {/* 화자별 음성 선택 */}
+            <div className="settings-page__voice-selection">
+              <span className="settings-page__label">화자별 음성</span>
+              {isLoadingVoices ? (
+                <div className="settings-page__voice-loading">음성 목록을 불러오는 중...</div>
+              ) : availableVoices.length === 0 ? (
+                <div className="settings-page__voice-empty">
+                  {ttsProvider.activeProvider !== 'webspeech' && !getActiveApiKey()
+                    ? 'API 키를 입력하면 음성 목록이 표시됩니다.'
+                    : '사용 가능한 음성이 없습니다.'}
+                </div>
+              ) : (
+                <div className="settings-page__voice-list">
+                  {SPEAKER_LABELS.map((label, index) => (
+                    <div key={index} className="settings-page__voice-item">
+                      <label
+                        htmlFor={`speaker-${index}`}
+                        className="settings-page__voice-label"
+                      >
+                        {label}
+                      </label>
+                      <select
+                        id={`speaker-${index}`}
+                        className="settings-page__voice-select"
+                        value={getSelectedVoiceId(index)}
+                        onChange={(e) => handleSpeakerVoiceChange(index, e.target.value)}
+                      >
+                        <option value="">자동 선택</option>
+                        {availableVoices.map((voice) => (
+                          <option key={voice.id} value={voice.id}>
+                            {voice.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="settings-page__hint">
+                대화 재생 시 각 화자에게 할당될 음성을 선택합니다.
+              </p>
+            </div>
           </div>
         </section>
 

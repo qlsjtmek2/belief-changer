@@ -7,6 +7,8 @@ import type { TTSProvider, TTSVoice } from './types';
 export interface SpeakDialogueOptions {
   settings?: VoiceSettings;
   loop?: boolean;
+  /** 화자별 음성 ID 매핑 (화자 인덱스 "0", "1", "2" -> voiceId) */
+  speakerVoiceMap?: Map<string, string>;
   onLineStart?: (index: number) => void;
   onLineEnd?: (index: number) => void;
   onComplete?: () => void;
@@ -40,11 +42,24 @@ export async function speakDialogueWithProvider(
     throw error;
   }
 
-  // 화자별 음성 할당 (순환)
+  // 화자별 음성 할당 (사용자 선택 우선, 없으면 순환 할당)
   const speakers = [...new Set(lines.map((line) => line.speaker))];
   const voiceMap = new Map<string, TTSVoice>();
 
   speakers.forEach((speaker, index) => {
+    // 화자 인덱스 키 ("0", "1", "2")로 사용자 선택 음성 확인
+    const speakerKey = String(index);
+    const selectedVoiceId = options.speakerVoiceMap?.get(speakerKey);
+
+    if (selectedVoiceId) {
+      const selectedVoice = availableVoices.find((v) => v.id === selectedVoiceId);
+      if (selectedVoice) {
+        voiceMap.set(speaker, selectedVoice);
+        return;
+      }
+    }
+
+    // 사용자 선택 없으면 순환 할당
     const voiceIndex = index % availableVoices.length;
     voiceMap.set(speaker, availableVoices[voiceIndex]);
   });

@@ -20,6 +20,8 @@ export { ttsManager } from './TTSManager';
 export interface LegacySpeakDialogueOptions {
   settings?: VoiceSettings;
   loop?: boolean;
+  /** 화자별 음성 ID 매핑 (화자 인덱스 "0", "1", "2" -> voiceId) */
+  speakerVoiceMap?: Map<string, string>;
   onLineStart?: (index: number) => void;
   onLineEnd?: (index: number) => void;
   onComplete?: () => void;

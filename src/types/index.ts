@@ -41,3 +41,10 @@ export interface TTSProviderSettings {
   elevenlabsApiKey: string;
   openaiApiKey: string;
 }
+
+// 화자별 음성 설정 (Provider별)
+export interface SpeakerVoiceSettings {
+  webspeech: Record<string, string>;   // speakerKey -> voiceId
+  elevenlabs: Record<string, string>;
+  openai: Record<string, string>;
+}

@@ -27,6 +27,7 @@ export abstract class BaseHTTPProvider implements TTSProvider {
   }
 
   abstract getAvailableVoices(): Promise<TTSVoice[]>;
+  abstract getKoreanVoices(): Promise<TTSVoice[]>;
 
   /**
    * 서브클래스에서 구현: 텍스트를 오디오 Blob으로 변환

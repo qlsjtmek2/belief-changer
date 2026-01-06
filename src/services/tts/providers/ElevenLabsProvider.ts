@@ -66,6 +66,11 @@ export class ElevenLabsProvider extends BaseHTTPProvider {
     }
   }
 
+  async getKoreanVoices(): Promise<TTSVoice[]> {
+    // ElevenLabs는 eleven_multilingual_v2 모델로 모든 음성이 한국어 지원
+    return this.getAvailableVoices();
+  }
+
   protected async generateAudio(
     text: string,
     voiceId: string,

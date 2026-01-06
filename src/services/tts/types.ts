@@ -54,6 +54,12 @@ export interface TTSProvider {
   getAvailableVoices(): Promise<TTSVoice[]>;
 
   /**
+   * 한국어 음성 목록 반환
+   * Provider별 필터링 로직 적용
+   */
+  getKoreanVoices(): Promise<TTSVoice[]>;
+
+  /**
    * 텍스트를 음성으로 발화
    * Promise는 발화 완료 또는 에러 시 resolve/reject
    */

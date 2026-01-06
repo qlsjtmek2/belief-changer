@@ -102,6 +102,13 @@ interface TTSProviderSettings {
   elevenlabsApiKey: string;
   openaiApiKey: string;
 }
+
+// 화자별 음성 설정 (Provider별)
+interface SpeakerVoiceSettings {
+  webspeech: Record<string, string>;   // speakerKey ("0", "1", "2") -> voiceId
+  elevenlabs: Record<string, string>;
+  openai: Record<string, string>;
+}
 ```
 
 ## 상태 관리 (Zustand)
@@ -124,7 +131,7 @@ interface TTSProviderSettings {
 
 ### settingsStore
 
-API 키, TTS Provider, 음성 설정 관리.
+API 키, TTS Provider, 음성 설정, 화자별 음성 관리.
 
 - `setGeminiApiKey(key)`: Gemini API 키 설정
 - `updateVoiceSettings(settings)`: 음성 설정 변경
@@ -132,6 +139,9 @@ API 키, TTS Provider, 음성 설정 관리.
 - `setElevenLabsApiKey(key)`: ElevenLabs API 키 설정
 - `setOpenAIApiKey(key)`: OpenAI API 키 설정
 - `hasTTSApiKey()`: 현재 Provider의 API 키 설정 여부 확인
+- `setSpeakerVoice(provider, speakerKey, voiceId)`: 화자별 음성 설정
+- `getSpeakerVoice(provider, speakerKey)`: 화자별 음성 ID 조회
+- `getSpeakerVoiceMap(provider)`: Provider별 화자-음성 Map 반환
 
 ## 서비스 레이어
 
@@ -149,7 +159,7 @@ Provider 패턴으로 다양한 TTS 엔진을 지원합니다.
 
 ```typescript
 // 공개 API (기존 호환)
-speakDialogue(lines, { settings, onLineStart, onComplete, onError })
+speakDialogue(lines, { settings, speakerVoiceMap, onLineStart, onComplete, onError })
 pause()
 resume()
 stop()
@@ -157,6 +167,10 @@ stop()
 // TTSManager로 Provider 전환
 ttsManager.setProvider('elevenlabs', { apiKey, voiceSettings })
 ttsManager.getProvider()
+
+// Provider 메서드
+provider.getAvailableVoices()  // 전체 음성 목록
+provider.getKoreanVoices()     // 한국어 음성 목록 (필터링된)
 ```
 
 **지원 Provider**:

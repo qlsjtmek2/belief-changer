@@ -42,6 +42,11 @@ export class OpenAITTSProvider extends BaseHTTPProvider {
     return OPENAI_VOICES;
   }
 
+  async getKoreanVoices(): Promise<TTSVoice[]> {
+    // OpenAI TTS는 모든 음성이 다국어(한국어 포함) 지원
+    return this.getAvailableVoices();
+  }
+
   protected async generateAudio(
     text: string,
     voiceId: string,

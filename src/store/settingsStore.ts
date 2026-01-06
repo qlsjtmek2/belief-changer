@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings } from '../types';
+import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SpeakerVoiceSettings } from '../types';
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   rate: 1,
@@ -14,9 +14,18 @@ const DEFAULT_TTS_PROVIDER_SETTINGS: TTSProviderSettings = {
   openaiApiKey: '',
 };
 
+const DEFAULT_SPEAKER_VOICES: SpeakerVoiceSettings = {
+  webspeech: {},
+  elevenlabs: {},
+  openai: {},
+};
+
 interface SettingsState extends Settings {
   // TTS Provider 설정
   ttsProvider: TTSProviderSettings;
+
+  // 화자별 음성 설정
+  speakerVoices: SpeakerVoiceSettings;
 
   // Actions - 기존
   setUserName: (name: string) => void;
@@ -31,6 +40,11 @@ interface SettingsState extends Settings {
   setOpenAIApiKey: (key: string) => void;
   getActiveApiKey: () => string | undefined;
   hasTTSApiKey: (provider?: TTSProviderType) => boolean;
+
+  // Actions - 화자별 음성
+  setSpeakerVoice: (provider: TTSProviderType, speakerKey: string, voiceId: string) => void;
+  getSpeakerVoice: (provider: TTSProviderType, speakerKey: string) => string | undefined;
+  getSpeakerVoiceMap: (provider: TTSProviderType) => Map<string, string>;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -40,6 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
       geminiApiKey: '',
       voiceSettings: DEFAULT_VOICE_SETTINGS,
       ttsProvider: DEFAULT_TTS_PROVIDER_SETTINGS,
+      speakerVoices: DEFAULT_SPEAKER_VOICES,
 
       setUserName: (name: string) => {
         set({ userName: name });
@@ -108,6 +123,28 @@ export const useSettingsStore = create<SettingsState>()(
             return true; // WebSpeech는 항상 사용 가능
         }
       },
+
+      // 화자별 음성 액션
+      setSpeakerVoice: (provider: TTSProviderType, speakerKey: string, voiceId: string) => {
+        set((state) => ({
+          speakerVoices: {
+            ...state.speakerVoices,
+            [provider]: {
+              ...state.speakerVoices[provider],
+              [speakerKey]: voiceId,
+            },
+          },
+        }));
+      },
+
+      getSpeakerVoice: (provider: TTSProviderType, speakerKey: string) => {
+        return get().speakerVoices[provider]?.[speakerKey];
+      },
+
+      getSpeakerVoiceMap: (provider: TTSProviderType) => {
+        const voiceSettings = get().speakerVoices[provider] ?? {};
+        return new Map(Object.entries(voiceSettings));
+      },
     }),
     {
       name: 'belief-changer-settings',
@@ -119,6 +156,11 @@ export const useSettingsStore = create<SettingsState>()(
         ttsProvider: {
           ...DEFAULT_TTS_PROVIDER_SETTINGS,
           ...((persistedState as Partial<SettingsState>)?.ttsProvider ?? {}),
+        },
+        // speakerVoices가 없는 기존 데이터 처리
+        speakerVoices: {
+          ...DEFAULT_SPEAKER_VOICES,
+          ...((persistedState as Partial<SettingsState>)?.speakerVoices ?? {}),
         },
       }),
     }
