@@ -13,6 +13,3 @@ export type { AffirmationCardProps } from './AffirmationCard';
 
 export { DialoguePlayer } from './DialoguePlayer';
 export type { DialoguePlayerProps } from './DialoguePlayer';
-
-export { VoiceSelector } from './VoiceSelector';
-export type { VoiceSelectorProps } from './VoiceSelector';

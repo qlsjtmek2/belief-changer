@@ -33,3 +33,11 @@ export interface Settings {
 
 // === TTS 관련 ===
 export type PlaybackStatus = 'idle' | 'playing' | 'paused';
+
+export type TTSProviderType = 'webspeech' | 'elevenlabs' | 'openai';
+
+export interface TTSProviderSettings {
+  activeProvider: TTSProviderType;
+  elevenlabsApiKey: string;
+  openaiApiKey: string;
+}

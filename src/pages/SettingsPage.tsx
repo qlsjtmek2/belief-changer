@@ -1,20 +1,31 @@
 import { Button, Input } from '../components';
 import { useSettingsStore } from '../store';
+import type { TTSProviderType } from '../types';
 import './SettingsPage.css';
 
 interface SettingsPageProps {
   onBack: () => void;
 }
 
+const TTS_PROVIDERS: { id: TTSProviderType; name: string; description: string }[] = [
+  { id: 'webspeech', name: 'Web Speech', description: '무료, 브라우저 내장' },
+  { id: 'elevenlabs', name: 'ElevenLabs', description: '고품질 AI 음성' },
+  { id: 'openai', name: 'OpenAI TTS', description: '자연스러운 음성' },
+];
+
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const {
     userName,
     geminiApiKey,
     voiceSettings,
+    ttsProvider,
     setUserName,
     setGeminiApiKey,
     updateVoiceSettings,
     resetVoiceSettings,
+    setActiveProvider,
+    setElevenLabsApiKey,
+    setOpenAIApiKey,
   } = useSettingsStore();
 
   return (
@@ -77,6 +88,90 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 에서 API 키를 발급받을 수 있습니다.
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* TTS Provider Section */}
+        <section className="settings-page__section">
+          <h2 className="settings-page__section-title">TTS 설정</h2>
+          <div className="settings-page__card">
+            {/* Provider Selection */}
+            <div className="settings-page__provider-group">
+              <span className="settings-page__label">음성 엔진</span>
+              <div className="settings-page__provider-options">
+                {TTS_PROVIDERS.map((provider) => (
+                  <label
+                    key={provider.id}
+                    className={`settings-page__provider-option ${
+                      ttsProvider.activeProvider === provider.id ? 'settings-page__provider-option--active' : ''
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tts-provider"
+                      value={provider.id}
+                      checked={ttsProvider.activeProvider === provider.id}
+                      onChange={() => setActiveProvider(provider.id)}
+                      className="settings-page__provider-radio"
+                    />
+                    <div className="settings-page__provider-content">
+                      <span className="settings-page__provider-name">{provider.name}</span>
+                      <span className="settings-page__provider-desc">{provider.description}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* ElevenLabs API Key */}
+            {ttsProvider.activeProvider === 'elevenlabs' && (
+              <div className="settings-page__input-group">
+                <Input
+                  label="ElevenLabs API 키"
+                  type="password"
+                  placeholder="API 키를 입력하세요"
+                  value={ttsProvider.elevenlabsApiKey}
+                  onChange={(e) => setElevenLabsApiKey(e.target.value)}
+                  fullWidth
+                />
+                <p className="settings-page__hint">
+                  <a
+                    href="https://elevenlabs.io/app/settings/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-page__link"
+                  >
+                    ElevenLabs
+                  </a>
+                  에서 API 키를 발급받을 수 있습니다.
+                </p>
+              </div>
+            )}
+
+            {/* OpenAI API Key */}
+            {ttsProvider.activeProvider === 'openai' && (
+              <div className="settings-page__input-group">
+                <Input
+                  label="OpenAI API 키"
+                  type="password"
+                  placeholder="API 키를 입력하세요"
+                  value={ttsProvider.openaiApiKey}
+                  onChange={(e) => setOpenAIApiKey(e.target.value)}
+                  fullWidth
+                />
+                <p className="settings-page__hint">
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-page__link"
+                  >
+                    OpenAI Platform
+                  </a>
+                  에서 API 키를 발급받을 수 있습니다.
+                </p>
+              </div>
+            )}
           </div>
         </section>
 

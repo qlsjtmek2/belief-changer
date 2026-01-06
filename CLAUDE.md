@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 핵심 플로우
 
 ```
-확언 입력 → Gemini AI 대화 생성 → Web Speech API TTS 재생
+확언 입력 → Gemini AI 대화 생성 → TTS 재생 (Web Speech / ElevenLabs / OpenAI)
 ```
 
 ## 기술 스택
@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Frontend**: React 19 + TypeScript + Vite
 - **상태관리**: Zustand (persist 미들웨어로 localStorage 저장)
 - **AI**: Gemini API (대화 스크립트 생성)
-- **TTS**: Web Speech API (브라우저 내장)
+- **TTS**: Provider 패턴 (Web Speech API, ElevenLabs, OpenAI TTS)
 - **스타일**: 커스텀 CSS (다크 테마)
 
 ## 개발 명령어
@@ -37,20 +37,28 @@ src/
 │   ├── Button.tsx           # 버튼 (primary/secondary/ghost, isLoading 지원)
 │   ├── Input.tsx            # 입력 필드 (label, hint 지원)
 │   ├── AffirmationCard.tsx  # 확언 카드 (선택/편집/삭제)
-│   ├── DialoguePlayer.tsx   # 대화 재생기 (진행바, 컨트롤)
-│   └── VoiceSelector.tsx    # 음성 선택 (미사용)
+│   └── DialoguePlayer.tsx   # 대화 재생기 (진행바, 컨트롤)
 ├── pages/           # 페이지 컴포넌트
 │   ├── HomePage.tsx         # 메인 화면 (확언 목록 + 대화 재생)
-│   └── SettingsPage.tsx     # 설정 화면 (API 키, 음성 설정)
+│   └── SettingsPage.tsx     # 설정 화면 (API 키, TTS 설정, 음성 설정)
 ├── services/        # 외부 API 연동
 │   ├── gemini.ts            # Gemini API 호출
-│   └── tts.ts               # Web Speech API 래퍼
+│   └── tts/                 # TTS Provider 패턴
+│       ├── index.ts         # 공개 API (speakDialogue, pause, resume, stop)
+│       ├── types.ts         # TTSProvider 인터페이스
+│       ├── TTSManager.ts    # Provider 싱글톤 관리
+│       ├── cache.ts         # LRU 세션 캐시
+│       ├── speakDialogue.ts # 대화 순차 재생 로직
+│       └── providers/       # TTS 구현체
+│           ├── WebSpeechProvider.ts   # 브라우저 내장 (무료)
+│           ├── ElevenLabsProvider.ts  # 고품질 AI 음성
+│           └── OpenAITTSProvider.ts   # OpenAI TTS
 ├── store/           # Zustand 스토어
 │   ├── affirmationStore.ts  # 확언 CRUD
 │   ├── dialogueStore.ts     # 대화 및 재생 상태
-│   └── settingsStore.ts     # 사용자 설정
+│   └── settingsStore.ts     # 사용자 설정 + TTS Provider 설정
 ├── types/           # TypeScript 타입 정의
-│   └── index.ts             # Affirmation, Dialogue, Settings 등
+│   └── index.ts             # Affirmation, Dialogue, Settings, TTSProviderType 등
 ├── utils/           # 유틸리티 함수
 │   └── prompts.ts           # Gemini 프롬프트 생성
 └── theme/           # 테마 시스템
@@ -84,6 +92,16 @@ interface VoiceSettings {
 
 // 재생 상태
 type PlaybackStatus = 'idle' | 'playing' | 'paused';
+
+// TTS Provider 타입
+type TTSProviderType = 'webspeech' | 'elevenlabs' | 'openai';
+
+// TTS Provider 설정
+interface TTSProviderSettings {
+  activeProvider: TTSProviderType;
+  elevenlabsApiKey: string;
+  openaiApiKey: string;
+}
 ```
 
 ## 상태 관리 (Zustand)
@@ -106,10 +124,14 @@ type PlaybackStatus = 'idle' | 'playing' | 'paused';
 
 ### settingsStore
 
-API 키 및 음성 설정 관리.
+API 키, TTS Provider, 음성 설정 관리.
 
-- `setGeminiApiKey(key)`: API 키 설정
+- `setGeminiApiKey(key)`: Gemini API 키 설정
 - `updateVoiceSettings(settings)`: 음성 설정 변경
+- `setActiveProvider(provider)`: TTS Provider 변경
+- `setElevenLabsApiKey(key)`: ElevenLabs API 키 설정
+- `setOpenAIApiKey(key)`: OpenAI API 키 설정
+- `hasTTSApiKey()`: 현재 Provider의 API 키 설정 여부 확인
 
 ## 서비스 레이어
 
@@ -121,16 +143,28 @@ Gemini API를 사용해 확언을 대화로 변환.
 generateDialogue(apiKey, { affirmation, userName, speakerCount })
 ```
 
-### services/tts.ts
+### services/tts/ (TTS Provider 패턴)
 
-Web Speech API를 래핑하여 대화 순차 재생.
+Provider 패턴으로 다양한 TTS 엔진을 지원합니다.
 
 ```typescript
+// 공개 API (기존 호환)
 speakDialogue(lines, { settings, onLineStart, onComplete, onError })
 pause()
 resume()
 stop()
+
+// TTSManager로 Provider 전환
+ttsManager.setProvider('elevenlabs', { apiKey, voiceSettings })
+ttsManager.getProvider()
 ```
+
+**지원 Provider**:
+- `webspeech`: 브라우저 내장 (무료, 오프라인)
+- `elevenlabs`: 고품질 AI 음성 (API 키 필요)
+- `openai`: OpenAI TTS (API 키 필요)
+
+**세션 캐싱**: ElevenLabs/OpenAI 오디오를 메모리에 캐싱 (LRU, 50개 항목)
 
 ## 주의사항
 
@@ -141,8 +175,11 @@ stop()
 
 ### API 키
 
-- Gemini API 키는 설정 페이지에서 사용자가 직접 입력
+- 모든 API 키는 설정 페이지에서 사용자가 직접 입력
 - localStorage에 저장 (클라이언트 노출됨, 개인용 앱)
+- **Gemini**: 대화 생성용
+- **ElevenLabs**: 고품질 TTS (선택)
+- **OpenAI**: TTS 또는 향후 GPT 연동 (선택)
 
 ### 스타일링
 

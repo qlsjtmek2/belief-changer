@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Button, Input, AffirmationCard, DialoguePlayer } from '../components';
 import { useAffirmationStore, useDialogueStore, useSettingsStore } from '../store';
-import { generateDialogue, speakDialogue, pause, resume, stop } from '../services';
+import { generateDialogue, speakDialogue, pause, resume, stop, ttsManager } from '../services';
 import './HomePage.css';
 
 interface HomePageProps {
@@ -34,7 +34,15 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     resetPlayback,
   } = useDialogueStore();
 
-  const { geminiApiKey, userName, voiceSettings, hasApiKey } = useSettingsStore();
+  const {
+    geminiApiKey,
+    userName,
+    voiceSettings,
+    ttsProvider,
+    hasApiKey,
+    getActiveApiKey,
+    hasTTSApiKey,
+  } = useSettingsStore();
 
   const currentDialogue = getCurrentDialogue();
   const selectedAffirmation = affirmations.find((a) => a.id === selectedId);
@@ -86,26 +94,54 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
   const handlePlay = useCallback(async () => {
     if (!currentDialogue) return;
 
+    // 일시정지 상태면 재개
     if (playbackStatus === 'paused') {
       resume();
       setPlaybackStatus('playing');
       return;
     }
 
+    // TTS API 키 확인 (WebSpeech 제외)
+    if (!hasTTSApiKey()) {
+      setError(`${ttsProvider.activeProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API 키를 설정해주세요.`);
+      return;
+    }
+
     setPlaybackStatus('playing');
     setCurrentLineIndex(0);
+    setError(null);
 
     try {
+      // Provider 설정 (설정이 변경되었을 수 있으므로 매번 설정)
+      await ttsManager.setProvider(ttsProvider.activeProvider, {
+        apiKey: getActiveApiKey(),
+        voiceSettings,
+      });
+
       await speakDialogue(currentDialogue.lines, {
         settings: voiceSettings,
         onLineStart: (index) => setCurrentLineIndex(index),
         onComplete: () => resetPlayback(),
-        onError: () => resetPlayback(),
+        onError: (err) => {
+          setError(err.message);
+          resetPlayback();
+        },
       });
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'TTS 재생에 실패했습니다.');
       resetPlayback();
     }
-  }, [currentDialogue, playbackStatus, voiceSettings, setPlaybackStatus, setCurrentLineIndex, resetPlayback]);
+  }, [
+    currentDialogue,
+    playbackStatus,
+    voiceSettings,
+    ttsProvider.activeProvider,
+    hasTTSApiKey,
+    getActiveApiKey,
+    setPlaybackStatus,
+    setCurrentLineIndex,
+    resetPlayback,
+  ]);
 
   const handlePause = useCallback(() => {
     pause();
