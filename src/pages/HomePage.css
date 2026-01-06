@@ -259,8 +259,24 @@
 .home-page__count-selector {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px; /* 높이 고정으로 레이아웃 점프 방지 */
+}
+
+.home-page__count-content {
+  display: flex;
+  align-items: center;
   gap: var(--spacing-md);
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.home-page__count-content--hidden {
+  opacity: 0;
+  transform: translateX(-10px);
+  pointer-events: none;
 }
 
 .home-page__count-label {
@@ -271,6 +287,73 @@
 .home-page__count-buttons {
   display: flex;
   gap: var(--spacing-xs);
+}
+
+/* AI Toggle Switch */
+.home-page__ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface-default);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.home-page__ai-toggle:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text-tertiary);
+}
+
+.home-page__ai-toggle--active {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: var(--color-primary-main);
+}
+
+.home-page__ai-toggle--active:hover {
+  background: rgba(139, 92, 246, 0.25);
+}
+
+.home-page__ai-toggle-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  transition: color 0.2s ease;
+}
+
+.home-page__ai-toggle--active .home-page__ai-toggle-label {
+  color: var(--color-primary-light);
+}
+
+.home-page__ai-toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--color-surface-border);
+  border-radius: var(--radius-full);
+  transition: background 0.2s ease;
+}
+
+.home-page__ai-toggle--active .home-page__ai-toggle-switch {
+  background: var(--color-primary-main);
+}
+
+.home-page__ai-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-text-primary);
+  border-radius: var(--radius-full);
+  transition: transform 0.2s ease;
+}
+
+.home-page__ai-toggle--active .home-page__ai-toggle-knob {
+  transform: translateX(16px);
+  background: var(--color-primary-contrast);
 }
 
 .home-page__count-btn {

@@ -33,6 +33,8 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     userName,
     geminiSettings,
     hasApiKey,
+    aiGenerationEnabled,
+    setAiGenerationEnabled,
   } = useSettingsStore();
 
   const isEmpty = affirmations.length === 0;
@@ -58,11 +60,21 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   }, [showEmptyState, shouldShowPlaylist]);
 
-  // 확언 변형 생성
+  // 확언 변형 생성 또는 직접 추가
   const handleGenerate = async () => {
     const trimmed = inputText.trim();
-    if (!trimmed || !hasApiKey()) {
-      setError('확언을 입력하고 API 키를 설정해주세요.');
+    if (!trimmed) return;
+
+    // AI 생성 OFF: 입력한 문장 그대로 추가
+    if (!aiGenerationEnabled) {
+      addAffirmations([trimmed]);
+      setInputText('');
+      return;
+    }
+
+    // AI 생성 ON: API 키 필요
+    if (!hasApiKey()) {
+      setError('API 키를 설정해주세요.');
       return;
     }
 
@@ -180,8 +192,8 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                 type="button"
                 className="home-page__add-btn"
                 onClick={handleGenerate}
-                disabled={!inputText.trim() || !hasApiKey() || isGenerating}
-                aria-label="확언 생성"
+                disabled={!inputText.trim() || (aiGenerationEnabled && !hasApiKey()) || isGenerating}
+                aria-label={aiGenerationEnabled ? '확언 생성' : '확언 추가'}
               >
                 {isGenerating ? (
                   <span className="home-page__add-btn-spinner" />
@@ -196,22 +208,39 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
           />
 
           <div className="home-page__count-selector">
-            <span className="home-page__count-label">생성 개수</span>
-            <div className="home-page__count-buttons">
-              {[1, 2, 3, 5, 10].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className={`home-page__count-btn ${count === n ? 'home-page__count-btn--active' : ''}`}
-                  onClick={() => setCount(n)}
-                >
-                  {n}
-                </button>
-              ))}
+            {/* AI 생성 ON/OFF에 따라 개수 선택 표시/숨김 (애니메이션 적용) */}
+            <div className={`home-page__count-content ${!aiGenerationEnabled ? 'home-page__count-content--hidden' : ''}`}>
+              <span className="home-page__count-label">생성 개수</span>
+              <div className="home-page__count-buttons">
+                {[1, 2, 3, 5, 10].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`home-page__count-btn ${count === n ? 'home-page__count-btn--active' : ''}`}
+                    onClick={() => setCount(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* AI 토글 스위치 - 항상 우측 끝에 고정 */}
+            <button
+              type="button"
+              className={`home-page__ai-toggle ${aiGenerationEnabled ? 'home-page__ai-toggle--active' : ''}`}
+              onClick={() => setAiGenerationEnabled(!aiGenerationEnabled)}
+              aria-label={aiGenerationEnabled ? 'AI 생성 끄기' : 'AI 생성 켜기'}
+              title={aiGenerationEnabled ? 'AI로 변형 생성' : '입력 그대로 추가'}
+            >
+              <span className="home-page__ai-toggle-label">AI</span>
+              <span className="home-page__ai-toggle-switch">
+                <span className="home-page__ai-toggle-knob" />
+              </span>
+            </button>
           </div>
 
-          {!hasApiKey() && (
+          {aiGenerationEnabled && !hasApiKey() && (
             <p className="home-page__api-hint">
               확언 생성을 위해{' '}
               <button type="button" className="home-page__link" onClick={onNavigateToSettings}>

@@ -22,6 +22,7 @@ export interface Settings {
   userName: string;
   geminiApiKey: string;
   voiceSettings: VoiceSettings;
+  aiGenerationEnabled?: boolean;  // AI 확언 변형 생성 활성화 (기본 true)
 }
 
 // === TTS 관련 ===
