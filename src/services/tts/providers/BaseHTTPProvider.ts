@@ -43,11 +43,11 @@ export abstract class BaseHTTPProvider implements TTSProvider {
     let audioUrl = ttsCache.get(cacheKey);
 
     if (!audioUrl) {
-      // 새로 생성
+      // 새로 생성 (429 에러 시 재시도)
       this.abortController = new AbortController();
 
       try {
-        const blob = await this.generateAudio(
+        const blob = await this.generateAudioWithRetry(
           text,
           options.voice.id,
           this.abortController.signal
@@ -63,6 +63,48 @@ export abstract class BaseHTTPProvider implements TTSProvider {
     }
 
     return this.playAudio(audioUrl, options);
+  }
+
+  /**
+   * 429 에러 시 지수 백오프로 재시도
+   */
+  private async generateAudioWithRetry(
+    text: string,
+    voiceId: string,
+    signal?: AbortSignal,
+    maxRetries = 3
+  ): Promise<Blob> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.generateAudio(text, voiceId, signal);
+      } catch (error) {
+        lastError = error as Error;
+
+        // AbortError는 즉시 throw
+        if (lastError.name === 'AbortError') {
+          throw lastError;
+        }
+
+        // 429 에러면 재시도
+        if (lastError.message.includes('429') && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+          console.warn(`Rate limited, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
+          await this.sleep(delay);
+          continue;
+        }
+
+        // 그 외 에러는 즉시 throw
+        throw lastError;
+      }
+    }
+
+    throw lastError;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   protected playAudio(url: string, options: TTSSpeakOptions): Promise<void> {
