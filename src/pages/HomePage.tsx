@@ -80,6 +80,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
     setIsGenerating(true);
     setError(null);
+    setInputText('');
 
     try {
       const generatedTexts = await generateAffirmations(geminiApiKey, {
@@ -91,7 +92,6 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
 
       if (generatedTexts.length > 0) {
         addAffirmations(generatedTexts);
-        setInputText('');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '확언 생성에 실패했습니다.');
