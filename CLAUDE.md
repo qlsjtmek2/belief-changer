@@ -114,6 +114,13 @@ interface SpeakerVoiceSettings {
   elevenlabs: Record<string, string>;
   openai: Record<string, string>;
 }
+
+// Gemini 설정
+interface GeminiSettings {
+  model: string;         // 기본값: 'gemini-2.0-flash'
+  temperature: number;   // 0.0~2.0 (기본 1.0)
+  customPrompt: string;  // 빈 문자열이면 기본 프롬프트 사용
+}
 ```
 
 ## 상태 관리 (Zustand)
@@ -123,7 +130,7 @@ interface SpeakerVoiceSettings {
 확언 CRUD 및 선택 상태 관리. localStorage 영속성.
 
 - `addAffirmation(text)`: 확언 추가
-- `deleteAffirmation(id)`: 확언 삭제
+- `deleteAffirmation(id)`: 확언 삭제 (**연결된 대화도 자동 삭제**)
 - `selectAffirmation(id)`: 확언 선택
 
 ### dialogueStore
@@ -132,6 +139,7 @@ interface SpeakerVoiceSettings {
 
 - `addDialogue(affirmationId, lines)`: 대화 저장 (라인에 id 자동 생성)
 - `deleteDialogue(id)`: 대화 삭제
+- `deleteDialoguesByAffirmation(affirmationId)`: 확언에 연결된 모든 대화 삭제
 - `getDialoguesByAffirmation(id)`: 확언별 대화 목록 조회
 - `deleteLine(dialogueId, lineId)`: 특정 라인 삭제
 - `reorderLines(dialogueId, lineIds)`: 라인 순서 변경
@@ -142,7 +150,7 @@ interface SpeakerVoiceSettings {
 
 ### settingsStore
 
-API 키, TTS Provider, 음성 설정, 화자별 음성 관리.
+API 키, TTS Provider, 음성 설정, 화자별 음성, Gemini 설정 관리.
 
 - `setGeminiApiKey(key)`: Gemini API 키 설정
 - `updateVoiceSettings(settings)`: 음성 설정 변경
@@ -153,6 +161,10 @@ API 키, TTS Provider, 음성 설정, 화자별 음성 관리.
 - `setSpeakerVoice(provider, speakerKey, voiceId)`: 화자별 음성 설정
 - `getSpeakerVoice(provider, speakerKey)`: 화자별 음성 ID 조회
 - `getSpeakerVoiceMap(provider)`: Provider별 화자-음성 Map 반환
+- `setGeminiModel(model)`: Gemini 모델 변경
+- `setGeminiTemperature(temp)`: 창의성 온도 변경 (0.0~2.0)
+- `setCustomPrompt(prompt)`: 커스텀 프롬프트 설정
+- `resetGeminiSettings()`: Gemini 설정 초기화
 
 ## 서비스 레이어
 
@@ -161,7 +173,21 @@ API 키, TTS Provider, 음성 설정, 화자별 음성 관리.
 Gemini API를 사용해 확언을 대화로 변환.
 
 ```typescript
-generateDialogue(apiKey, { affirmation, userName, speakerCount })
+generateDialogue(apiKey, { affirmation, userName, speakerCount, geminiSettings })
+```
+
+**지원 모델**: `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash`
+
+### utils/prompts.ts
+
+프롬프트 템플릿과 커스텀 프롬프트 지원.
+
+```typescript
+// 기본 템플릿
+DEFAULT_PROMPT_TEMPLATE
+
+// 템플릿 변수: {{affirmation}}, {{userName}}, {{speakerCount}}, {{minTurns}}, {{maxTurns}}
+createDialoguePrompt(affirmation, userName, speakerCount, customPrompt?)
 ```
 
 ### services/tts/ (TTS Provider 패턴)

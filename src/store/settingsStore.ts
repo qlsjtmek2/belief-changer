@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SpeakerVoiceSettings } from '../types';
+import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SpeakerVoiceSettings, GeminiSettings } from '../types';
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   rate: 1,
@@ -20,12 +20,21 @@ const DEFAULT_SPEAKER_VOICES: SpeakerVoiceSettings = {
   openai: {},
 };
 
+const DEFAULT_GEMINI_SETTINGS: GeminiSettings = {
+  model: 'gemini-2.0-flash',
+  temperature: 1.0,
+  customPrompt: '',
+};
+
 interface SettingsState extends Settings {
   // TTS Provider 설정
   ttsProvider: TTSProviderSettings;
 
   // 화자별 음성 설정
   speakerVoices: SpeakerVoiceSettings;
+
+  // Gemini 설정
+  geminiSettings: GeminiSettings;
 
   // Actions - 기존
   setUserName: (name: string) => void;
@@ -45,6 +54,12 @@ interface SettingsState extends Settings {
   setSpeakerVoice: (provider: TTSProviderType, speakerKey: string, voiceId: string) => void;
   getSpeakerVoice: (provider: TTSProviderType, speakerKey: string) => string | undefined;
   getSpeakerVoiceMap: (provider: TTSProviderType) => Map<string, string>;
+
+  // Actions - Gemini 설정
+  setGeminiModel: (model: string) => void;
+  setGeminiTemperature: (temperature: number) => void;
+  setCustomPrompt: (prompt: string) => void;
+  resetGeminiSettings: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -55,6 +70,7 @@ export const useSettingsStore = create<SettingsState>()(
       voiceSettings: DEFAULT_VOICE_SETTINGS,
       ttsProvider: DEFAULT_TTS_PROVIDER_SETTINGS,
       speakerVoices: DEFAULT_SPEAKER_VOICES,
+      geminiSettings: DEFAULT_GEMINI_SETTINGS,
 
       setUserName: (name: string) => {
         set({ userName: name });
@@ -145,6 +161,29 @@ export const useSettingsStore = create<SettingsState>()(
         const voiceSettings = get().speakerVoices[provider] ?? {};
         return new Map(Object.entries(voiceSettings));
       },
+
+      // Gemini 설정 액션
+      setGeminiModel: (model: string) => {
+        set((state) => ({
+          geminiSettings: { ...state.geminiSettings, model },
+        }));
+      },
+
+      setGeminiTemperature: (temperature: number) => {
+        set((state) => ({
+          geminiSettings: { ...state.geminiSettings, temperature },
+        }));
+      },
+
+      setCustomPrompt: (prompt: string) => {
+        set((state) => ({
+          geminiSettings: { ...state.geminiSettings, customPrompt: prompt },
+        }));
+      },
+
+      resetGeminiSettings: () => {
+        set({ geminiSettings: DEFAULT_GEMINI_SETTINGS });
+      },
     }),
     {
       name: 'belief-changer-settings',
@@ -161,6 +200,11 @@ export const useSettingsStore = create<SettingsState>()(
         speakerVoices: {
           ...DEFAULT_SPEAKER_VOICES,
           ...((persistedState as Partial<SettingsState>)?.speakerVoices ?? {}),
+        },
+        // geminiSettings가 없는 기존 데이터 처리
+        geminiSettings: {
+          ...DEFAULT_GEMINI_SETTINGS,
+          ...((persistedState as Partial<SettingsState>)?.geminiSettings ?? {}),
         },
       }),
     }

@@ -32,6 +32,12 @@ export interface VoiceSettings {
   volume: number;    // 0 ~ 1 (기본 1)
 }
 
+export interface GeminiSettings {
+  model: string;         // 기본값: 'gemini-2.0-flash'
+  temperature: number;   // 0.0 ~ 2.0 (기본 1.0)
+  customPrompt: string;  // 빈 문자열이면 기본 프롬프트 사용
+}
+
 export interface Settings {
   userName: string;
   geminiApiKey: string;

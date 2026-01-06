@@ -21,6 +21,7 @@ interface DialogueState {
   // Actions
   addDialogue: (affirmationId: string, lines: RawDialogueLine[]) => Dialogue;
   deleteDialogue: (id: string) => void;
+  deleteDialoguesByAffirmation: (affirmationId: string) => void;
   getDialoguesByAffirmation: (affirmationId: string) => Dialogue[];
   setCurrentDialogue: (id: string | null) => void;
   getCurrentDialogue: () => Dialogue | null;
@@ -92,6 +93,27 @@ export const useDialogueStore = create<DialogueState>()(
           currentDialogueId:
             state.currentDialogueId === id ? null : state.currentDialogueId,
         }));
+      },
+
+      deleteDialoguesByAffirmation: (affirmationId: string) => {
+        set((state) => {
+          const remainingDialogues = state.dialogues.filter(
+            (d) => d.affirmationId !== affirmationId
+          );
+
+          // 현재 재생 중인 대화가 삭제 대상인지 확인
+          const currentDialogue = state.dialogues.find(
+            (d) => d.id === state.currentDialogueId
+          );
+          const isCurrentDeleted = currentDialogue?.affirmationId === affirmationId;
+
+          return {
+            dialogues: remainingDialogues,
+            currentDialogueId: isCurrentDeleted ? null : state.currentDialogueId,
+            playbackStatus: isCurrentDeleted ? 'idle' : state.playbackStatus,
+            currentLineIndex: isCurrentDeleted ? 0 : state.currentLineIndex,
+          };
+        });
       },
 
       getDialoguesByAffirmation: (affirmationId: string) => {

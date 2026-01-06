@@ -2,10 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button, Input } from '../components';
 import { useSettingsStore } from '../store';
 import { ttsManager, type TTSVoice } from '../services/tts';
+import { DEFAULT_PROMPT_TEMPLATE } from '../utils/prompts';
 import type { TTSProviderType } from '../types';
 import './SettingsPage.css';
 
 const SPEAKER_LABELS = ['화자 1', '화자 2', '화자 3'];
+
+const GEMINI_MODELS = [
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: '빠른 응답' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: '고품질 출력' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: '균형잡힌 성능' },
+];
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -24,6 +31,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     voiceSettings,
     ttsProvider,
     speakerVoices,
+    geminiSettings,
     setUserName,
     setGeminiApiKey,
     updateVoiceSettings,
@@ -33,6 +41,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setOpenAIApiKey,
     setSpeakerVoice,
     getActiveApiKey,
+    setGeminiModel,
+    setGeminiTemperature,
+    setCustomPrompt,
+    resetGeminiSettings,
   } = useSettingsStore();
 
   const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
@@ -133,6 +145,80 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   Google AI Studio
                 </a>
                 에서 API 키를 발급받을 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* AI Generation Settings Section */}
+        <section className="settings-page__section">
+          <div className="settings-page__section-header">
+            <h2 className="settings-page__section-title">AI 생성 설정</h2>
+            <Button variant="ghost" size="sm" onClick={resetGeminiSettings}>
+              초기화
+            </Button>
+          </div>
+          <div className="settings-page__card">
+            {/* Model Selection */}
+            <div className="settings-page__input-group">
+              <label htmlFor="gemini-model" className="settings-page__label">
+                Gemini 모델
+              </label>
+              <select
+                id="gemini-model"
+                className="settings-page__select"
+                value={geminiSettings.model}
+                onChange={(e) => setGeminiModel(e.target.value)}
+              >
+                {GEMINI_MODELS.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} - {model.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Temperature Slider */}
+            <div className="settings-page__slider-group">
+              <div className="settings-page__slider-header">
+                <label htmlFor="temperature" className="settings-page__label">
+                  창의성 (Temperature)
+                </label>
+                <span className="settings-page__value">{geminiSettings.temperature.toFixed(1)}</span>
+              </div>
+              <input
+                id="temperature"
+                type="range"
+                className="settings-page__slider"
+                min="0"
+                max="2"
+                step="0.1"
+                value={geminiSettings.temperature}
+                onChange={(e) => setGeminiTemperature(parseFloat(e.target.value))}
+              />
+              <div className="settings-page__slider-labels">
+                <span>일관적</span>
+                <span>창의적</span>
+              </div>
+            </div>
+
+            {/* Custom Prompt */}
+            <div className="settings-page__input-group">
+              <label htmlFor="custom-prompt" className="settings-page__label">
+                커스텀 프롬프트
+              </label>
+              <textarea
+                id="custom-prompt"
+                className="settings-page__textarea"
+                rows={10}
+                placeholder={DEFAULT_PROMPT_TEMPLATE}
+                value={geminiSettings.customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+              />
+              <p className="settings-page__hint">
+                사용 가능한 변수: {'{{affirmation}}'}, {'{{userName}}'}, {'{{speakerCount}}'}, {'{{minTurns}}'}, {'{{maxTurns}}'}
+                <br />
+                비워두면 기본 프롬프트가 사용됩니다.
               </p>
             </div>
           </div>

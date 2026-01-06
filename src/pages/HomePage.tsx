@@ -52,6 +52,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     userName,
     voiceSettings,
     ttsProvider,
+    geminiSettings,
     hasApiKey,
     getActiveApiKey,
     hasTTSApiKey,
@@ -94,6 +95,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
         affirmation: selectedAffirmation.text,
         userName: userName || '사용자',
         speakerCount: 3,
+        geminiSettings,
       });
 
       const dialogue = addDialogue(selectedAffirmation.id, lines);
@@ -301,6 +303,33 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
     }
   }, [deleteDialogue, selectedDialogues, setCurrentDialogue]);
 
+  // 확언 삭제 핸들러 (재생 중이면 TTS 중지)
+  const handleDeleteAffirmation = useCallback((id: string) => {
+    // 삭제할 확언에 연결된 대화가 현재 재생 중인지 확인
+    const dialoguesForAffirmation = getDialoguesByAffirmation(id);
+    const isPlayingDeletedDialogue = dialoguesForAffirmation.some(
+      (d) => d.id === currentDialogue?.id && playbackStatus !== 'idle'
+    );
+
+    // 재생 중이면 먼저 정지
+    if (isPlayingDeletedDialogue) {
+      isPlayingAllRef.current = false;
+      stop();
+      resetPlayback();
+      resetPlaylist();
+    }
+
+    // 확언 삭제 (연결된 대화도 함께 삭제됨 - affirmationStore에서 처리)
+    deleteAffirmation(id);
+  }, [
+    getDialoguesByAffirmation,
+    currentDialogue,
+    playbackStatus,
+    resetPlayback,
+    resetPlaylist,
+    deleteAffirmation,
+  ]);
+
   // 플레이리스트 정보
   const playlistInfo = playlistMode === 'all' && dialogues.length > 0
     ? { current: currentPlaylistIndex + 1, total: dialogues.length }
@@ -447,7 +476,7 @@ export function HomePage({ onNavigateToSettings }: HomePageProps) {
                       }
                     }}
                     onEdit={updateAffirmation}
-                    onDelete={deleteAffirmation}
+                    onDelete={handleDeleteAffirmation}
                   />
                 ))}
               </div>

@@ -367,3 +367,65 @@
   background: var(--color-surface);
   color: var(--color-text-primary);
 }
+
+/* Select (AI 생성 설정용) */
+.settings-page__select {
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-3) center;
+  padding-right: var(--spacing-10);
+}
+
+.settings-page__select:hover {
+  border-color: var(--color-text-disabled);
+}
+
+.settings-page__select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.settings-page__select option {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Textarea (커스텀 프롬프트용) */
+.settings-page__textarea {
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  resize: vertical;
+  min-height: 180px;
+  transition: border-color 0.2s ease;
+}
+
+.settings-page__textarea::placeholder {
+  color: var(--color-text-hint);
+  font-size: 0.75rem;
+}
+
+.settings-page__textarea:hover {
+  border-color: var(--color-text-disabled);
+}
+
+.settings-page__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
