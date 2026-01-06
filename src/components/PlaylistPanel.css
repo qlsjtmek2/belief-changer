@@ -237,7 +237,7 @@
   }
 
   .playlist-item {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-3) var(--spacing-md);
   }
 
   .playlist-item__delete {

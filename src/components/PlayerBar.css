@@ -104,7 +104,7 @@
 /* 반응형 */
 @media (max-width: 640px) {
   .player-bar {
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: var(--spacing-3) var(--spacing-md);
   }
 
   .player-bar__controls {
@@ -127,7 +127,6 @@
   }
 
   .player-bar__track {
-    width: 100px;
-    visibility: hidden;
+    display: none;
   }
 }
