@@ -4,11 +4,10 @@ import './Toast.css';
 
 interface SingleToastProps {
   toast: ToastItem;
-  index: number;
   onRemove: (id: string) => void;
 }
 
-function SingleToast({ toast, index, onRemove }: SingleToastProps) {
+function SingleToast({ toast, onRemove }: SingleToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -34,13 +33,9 @@ function SingleToast({ toast, index, onRemove }: SingleToastProps) {
     toast.type === 'error' && 'toast--error',
   ].filter(Boolean).join(' ');
 
-  // 스택 위치 계산 (최신이 아래, 이전 것은 위로)
-  const stackOffset = index * 46; // 각 토스트 높이(~36px) + 간격(10px)
-
   return (
     <div
       className={toastClasses}
-      style={{ bottom: `${stackOffset}px` }}
       onClick={() => onRemove(toast.id)}
     >
       <div className="toast__icon">
@@ -72,11 +67,10 @@ export function ToastContainer() {
 
   return (
     <div className="toast-container">
-      {toasts.map((toast, index) => (
+      {toasts.map((toast) => (
         <SingleToast
           key={toast.id}
           toast={toast}
-          index={toasts.length - 1 - index} // 최신이 index 0 (맨 아래)
           onRemove={removeToast}
         />
       ))}
