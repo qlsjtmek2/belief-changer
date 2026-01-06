@@ -183,8 +183,8 @@ export function PlayerBar() {
         </div>
 
         {/* 가운데: 현재 재생 중인 확언 */}
-        <div className="player-bar__info">
-          <span className={`player-bar__text ${playbackStatus === 'playing' ? 'player-bar__text--playing' : ''}`}>
+        <div className={`player-bar__info ${playbackStatus === 'playing' ? 'player-bar__info--playing' : ''}`}>
+          <span className="player-bar__text">
             {currentAffirmation?.text || '확언을 선택하세요'}
           </span>
         </div>

@@ -76,7 +76,7 @@
   flex: 1;
   overflow: hidden;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 0 var(--spacing-md);
 }
 
@@ -84,11 +84,19 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   white-space: nowrap;
-  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-/* 재생 중 텍스트 효과 - Marquee 스크롤 (처음 보이고 → 왼쪽 이동 → 잠깐 멈춤 → 처음으로) */
-.player-bar__text--playing {
+/* 재생 중 텍스트 효과 - Marquee 스크롤 */
+.player-bar__info--playing {
+  justify-content: flex-start;
+}
+
+.player-bar__info--playing .player-bar__text {
+  overflow: visible;
+  max-width: none;
   animation: textMarquee 6s ease-in-out infinite;
 }
 
