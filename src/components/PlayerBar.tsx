@@ -59,7 +59,8 @@ export function PlayerBar() {
 
       let idx = currentIndex;
 
-      while (isPlayingRef.current && idx < affirmations.length) {
+      // 무한 반복 재생
+      while (isPlayingRef.current) {
         const affirmation = affirmations[idx];
 
         await new Promise<void>((resolve, reject) => {
@@ -74,9 +75,12 @@ export function PlayerBar() {
 
         const hasNext = advanceToNext();
         if (!hasNext) {
-          break;
+          // 마지막 항목이면 처음으로 돌아감
+          setCurrentIndex(0);
+          idx = 0;
+        } else {
+          idx++;
         }
-        idx++;
       }
 
       resetPlayback();
