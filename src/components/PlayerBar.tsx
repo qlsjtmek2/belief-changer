@@ -1,10 +1,18 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useAffirmationStore, useSettingsStore, toast } from '../store';
-import { speakText, pause, resume, stop, ttsManager } from '../services';
+import { speakText, pause, resume, stop, ttsManager, audioSessionKeeper, preloadText } from '../services';
 import './PlayerBar.css';
 
 // Media Session API 지원 여부 확인
 const isMediaSessionSupported = 'mediaSession' in navigator;
+
+// 모바일 환경 감지
+const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+  navigator.userAgent
+);
+
+// WebSpeech 백그라운드 제한 안내 표시 여부 (localStorage 키)
+const WEBSPEECH_WARNING_SHOWN_KEY = 'webspeech_bg_warning_shown';
 
 // 기술적 오류 메시지를 사용자 친화적으로 변환
 function formatErrorMessage(error: Error): string {
@@ -84,6 +92,21 @@ export function PlayerBar() {
     setPlaybackStatus('playing');
     isPlayingRef.current = true;
 
+    // HTTP 기반 Provider(ElevenLabs, OpenAI)면 백그라운드 오디오 세션 유지 시작
+    const isHTTPProvider = ttsProvider.activeProvider !== 'webspeech';
+    if (isHTTPProvider) {
+      audioSessionKeeper.start();
+    }
+
+    // WebSpeech + 모바일: 백그라운드 재생 제한 안내 (최초 1회)
+    if (!isHTTPProvider && isMobile) {
+      const alreadyWarned = localStorage.getItem(WEBSPEECH_WARNING_SHOWN_KEY);
+      if (!alreadyWarned) {
+        toast.error('웹 음성은 백그라운드 재생을 지원하지 않습니다. 설정에서 ElevenLabs 또는 OpenAI TTS를 선택해주세요.', 5000);
+        localStorage.setItem(WEBSPEECH_WARNING_SHOWN_KEY, 'true');
+      }
+    }
+
     try {
       await ttsManager.setProvider(ttsProvider.activeProvider, {
         apiKey: getActiveApiKey(),
@@ -100,6 +123,12 @@ export function PlayerBar() {
         // 매 재생 시 최신 음성 설정 가져오기 (설정 변경 즉시 반영)
         const selectedVoice = getSelectedVoice();
         const voices = selectedVoice ? [selectedVoice] : undefined;
+
+        // 다음 확언 프리로드 (백그라운드에서 비동기 실행)
+        if (isHTTPProvider && affirmations.length > 1) {
+          const nextIdx = (idx + 1) % affirmations.length;
+          preloadText(affirmations[nextIdx].text, { voice: selectedVoice });
+        }
 
         await new Promise<void>((resolve, reject) => {
           speakText(affirmation.text, {
@@ -142,6 +171,8 @@ export function PlayerBar() {
       toast.error(formatErrorMessage(error as Error));
     } finally {
       isPlayingRef.current = false;
+      // 백그라운드 오디오 세션 중지
+      audioSessionKeeper.stop();
     }
   }, [
     affirmations,

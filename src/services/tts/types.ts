@@ -66,6 +66,12 @@ export interface TTSProvider {
    */
   speak(text: string, options: TTSSpeakOptions): Promise<void>;
 
+  /**
+   * 오디오를 미리 생성하여 캐시에 저장 (선택적)
+   * HTTP 기반 Provider에서만 지원
+   */
+  preload?(text: string, voiceId: string): Promise<void>;
+
   /** 재생 일시정지 */
   pause(): void;
 

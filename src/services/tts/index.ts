@@ -13,6 +13,9 @@ export type { SpeakTextOptions } from './speakText';
 // === Manager export ===
 export { ttsManager } from './TTSManager';
 
+// === AudioSessionKeeper export (백그라운드 재생용) ===
+export { audioSessionKeeper } from './AudioSessionKeeper';
+
 // === 텍스트 재생 옵션 ===
 export interface SpeakOptions {
   settings?: VoiceSettings;
@@ -78,4 +81,34 @@ export function getPlaybackState(): { isPlaying: boolean; isPaused: boolean } {
     isPlaying: false,
     isPaused: false,
   };
+}
+
+/**
+ * 텍스트를 미리 로드하여 캐시에 저장합니다.
+ * 백그라운드 재생 시 다음 확언을 미리 로드하여 간극을 최소화합니다.
+ * HTTP 기반 Provider(ElevenLabs, OpenAI)에서만 지원됩니다.
+ */
+export async function preloadText(
+  text: string,
+  options: { voice?: string } = {}
+): Promise<void> {
+  const provider = ttsManager.getProvider();
+  if (!provider || !provider.preload) {
+    return; // WebSpeech는 preload 미지원
+  }
+
+  // 음성 ID 결정: 지정된 음성 또는 한국어 음성 중 첫 번째
+  let voiceId = options.voice;
+  if (!voiceId) {
+    const koreanVoices = await provider.getKoreanVoices();
+    if (koreanVoices.length > 0) {
+      voiceId = koreanVoices[0].id;
+    }
+  }
+
+  if (!voiceId) {
+    return; // 사용 가능한 음성 없음
+  }
+
+  return provider.preload(text, voiceId);
 }

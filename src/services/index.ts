@@ -9,6 +9,8 @@ export {
   stop,
   getPlaybackState,
   ttsManager,
+  audioSessionKeeper,
+  preloadText,
 } from './tts';
 export type {
   TTSProvider,

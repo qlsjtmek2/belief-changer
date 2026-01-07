@@ -66,6 +66,28 @@ export abstract class BaseHTTPProvider implements TTSProvider {
   }
 
   /**
+   * 오디오를 미리 생성하여 캐시에 저장합니다.
+   * 백그라운드 재생 시 다음 확언을 미리 로드하여 간극을 최소화합니다.
+   */
+  async preload(text: string, voiceId: string): Promise<void> {
+    const cacheKey = ttsCache.generateKey(this.type, voiceId, text);
+
+    // 이미 캐시에 있으면 스킵
+    if (ttsCache.get(cacheKey)) {
+      return;
+    }
+
+    try {
+      const blob = await this.generateAudioWithRetry(text, voiceId);
+      const audioUrl = URL.createObjectURL(blob);
+      ttsCache.set(cacheKey, audioUrl);
+    } catch (error) {
+      // 프리로드 실패는 무시 (실제 재생 시 다시 시도)
+      console.warn('Preload failed:', error);
+    }
+  }
+
+  /**
    * 429 에러 시 지수 백오프로 재시도
    */
   private async generateAudioWithRetry(

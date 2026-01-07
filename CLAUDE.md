@@ -43,11 +43,12 @@ src/
 ├── services/        # 외부 API 연동
 │   ├── gemini.ts            # Gemini API 호출
 │   └── tts/                 # TTS Provider 패턴
-│       ├── index.ts         # 공개 API (speakDialogue, pause, resume, stop)
+│       ├── index.ts         # 공개 API (speakDialogue, pause, resume, stop, preloadText)
 │       ├── types.ts         # TTSProvider 인터페이스
 │       ├── TTSManager.ts    # Provider 싱글톤 관리
 │       ├── cache.ts         # LRU 세션 캐시
 │       ├── speakDialogue.ts # 대화 순차 재생 로직
+│       ├── AudioSessionKeeper.ts  # 모바일 백그라운드 재생 세션 유지
 │       └── providers/       # TTS 구현체
 │           ├── WebSpeechProvider.ts   # 브라우저 내장 (무료)
 │           ├── ElevenLabsProvider.ts  # 고품질 AI 음성
@@ -288,3 +289,32 @@ toast.success('저장됨', 1500);
 
 - 각 확언 재생 후 **1.5초** 딜레이 적용
 - 사용자가 숨 쉴 틈을 제공하여 자연스러운 청취 경험
+
+### 모바일 백그라운드 재생
+
+화면이 꺼지거나 브라우저를 나가도 플레이리스트가 계속 재생됩니다.
+
+**지원 Provider**:
+- `elevenlabs`: 백그라운드 재생 **지원**
+- `openai`: 백그라운드 재생 **지원**
+- `webspeech`: 백그라운드 재생 **불가** (SpeechSynthesis API 제한)
+
+**구현 방식**:
+1. `AudioSessionKeeper`: Web Audio API로 무음 오디오를 지속 재생하여 오디오 세션 유지
+2. `preloadText()`: 다음 확언을 미리 캐시에 로드하여 간극 최소화
+3. `Media Session API`: 잠금 화면에서 재생 컨트롤 표시
+
+```typescript
+import { audioSessionKeeper, preloadText } from '../services';
+
+// 재생 시작 시
+audioSessionKeeper.start();
+
+// 다음 확언 프리로드 (백그라운드 비동기)
+preloadText(nextAffirmation.text, { voice: selectedVoice });
+
+// 재생 종료 시
+audioSessionKeeper.stop();
+```
+
+**WebSpeech 사용자 안내**: 모바일 + WebSpeech 조합에서 최초 재생 시 백그라운드 제한 안내 토스트 표시 (1회만)
