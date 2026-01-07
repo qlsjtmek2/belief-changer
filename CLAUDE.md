@@ -97,11 +97,15 @@ type PlaybackStatus = 'idle' | 'playing' | 'paused';
 // TTS Provider 타입
 type TTSProviderType = 'webspeech' | 'elevenlabs' | 'openai';
 
+// OpenAI TTS 모델
+type OpenAITTSModel = 'tts-1' | 'tts-1-hd' | 'gpt-4o-mini-tts';
+
 // TTS Provider 설정
 interface TTSProviderSettings {
   activeProvider: TTSProviderType;
   elevenlabsApiKey: string;
   openaiApiKey: string;
+  openaiModel: OpenAITTSModel;  // 기본값: 'gpt-4o-mini-tts'
 }
 
 // 화자별 음성 설정 (Provider별)
