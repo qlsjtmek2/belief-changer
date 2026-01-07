@@ -88,6 +88,7 @@ export function PlayerBar() {
       await ttsManager.setProvider(ttsProvider.activeProvider, {
         apiKey: getActiveApiKey(),
         voiceSettings,
+        openaiModel: ttsProvider.openaiModel,
       });
 
       let idx = currentIndex;

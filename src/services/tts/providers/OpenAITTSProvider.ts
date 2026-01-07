@@ -1,4 +1,5 @@
 import type { TTSVoice, TTSProviderConfig } from '../types';
+import type { OpenAITTSModel } from '../../../types';
 import { BaseHTTPProvider } from './BaseHTTPProvider';
 
 const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
@@ -10,6 +11,7 @@ const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
 const OPENAI_VOICES: TTSVoice[] = [
   { id: 'alloy', name: 'Alloy (중성)', provider: 'openai' },
   { id: 'ash', name: 'Ash', provider: 'openai' },
+  { id: 'ballad', name: 'Ballad', provider: 'openai' },
   { id: 'coral', name: 'Coral', provider: 'openai' },
   { id: 'echo', name: 'Echo (남성)', provider: 'openai' },
   { id: 'fable', name: 'Fable (영국 억양)', provider: 'openai' },
@@ -17,13 +19,16 @@ const OPENAI_VOICES: TTSVoice[] = [
   { id: 'onyx', name: 'Onyx (남성, 깊은)', provider: 'openai' },
   { id: 'sage', name: 'Sage', provider: 'openai' },
   { id: 'shimmer', name: 'Shimmer (여성)', provider: 'openai' },
+  { id: 'verse', name: 'Verse', provider: 'openai' },
+  { id: 'marin', name: 'Marin', provider: 'openai' },
+  { id: 'cedar', name: 'Cedar', provider: 'openai' },
 ];
 
 /**
  * OpenAI TTS Provider
  *
  * OpenAI의 Text-to-Speech API를 사용합니다.
- * - tts-1 모델 사용 (빠른 응답)
+ * - tts-1, tts-1-hd, gpt-4o-mini-tts 모델 지원
  * - 다국어 지원 (한국어 포함)
  * - API 키 필요 (OpenAI API 키)
  *
@@ -33,8 +38,13 @@ export class OpenAITTSProvider extends BaseHTTPProvider {
   readonly name = 'OpenAI TTS';
   readonly type = 'openai' as const;
 
+  private model: OpenAITTSModel = 'gpt-4o-mini-tts';
+
   async initialize(config: TTSProviderConfig): Promise<void> {
     await super.initialize(config);
+    if (config.openaiModel) {
+      this.model = config.openaiModel;
+    }
   }
 
   async getAvailableVoices(): Promise<TTSVoice[]> {
@@ -66,7 +76,7 @@ export class OpenAITTSProvider extends BaseHTTPProvider {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'tts-1',
+        model: this.model,
         voice: voiceId,
         input: text,
         response_format: 'mp3',

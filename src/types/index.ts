@@ -30,10 +30,13 @@ export type PlaybackStatus = 'idle' | 'playing' | 'paused';
 
 export type TTSProviderType = 'webspeech' | 'elevenlabs' | 'openai';
 
+export type OpenAITTSModel = 'tts-1' | 'tts-1-hd' | 'gpt-4o-mini-tts';
+
 export interface TTSProviderSettings {
   activeProvider: TTSProviderType;
   elevenlabsApiKey: string;
   openaiApiKey: string;
+  openaiModel: OpenAITTSModel;
 }
 
 // Provider별 선택된 음성 (빈 문자열 = 랜덤)

@@ -24,6 +24,12 @@ const TTS_PROVIDERS: { id: TTSProviderType; name: string; description: string }[
   { id: 'openai', name: 'OpenAI TTS', description: '자연스러운 음성' },
 ];
 
+const OPENAI_MODELS = [
+  { id: 'gpt-4o-mini-tts', name: 'GPT-4o Mini TTS', description: '최신, 권장' },
+  { id: 'tts-1', name: 'TTS-1', description: '빠름, 저렴' },
+  { id: 'tts-1-hd', name: 'TTS-1 HD', description: '고품질' },
+];
+
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const {
     userName,
@@ -39,6 +45,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setActiveProvider,
     setElevenLabsApiKey,
     setOpenAIApiKey,
+    setOpenAIModel,
     setSelectedVoice,
     getActiveApiKey,
     setGeminiModel,
@@ -285,29 +292,49 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             )}
 
-            {/* OpenAI API Key */}
+            {/* OpenAI API Key & Model */}
             {ttsProvider.activeProvider === 'openai' && (
-              <div className="settings-page__input-group">
-                <Input
-                  label="OpenAI API 키"
-                  type="password"
-                  placeholder="API 키를 입력하세요"
-                  value={ttsProvider.openaiApiKey}
-                  onChange={(e) => setOpenAIApiKey(e.target.value)}
-                  fullWidth
-                />
-                <p className="settings-page__hint">
-                  <a
-                    href="https://platform.openai.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="settings-page__link"
+              <>
+                <div className="settings-page__input-group">
+                  <Input
+                    label="OpenAI API 키"
+                    type="password"
+                    placeholder="API 키를 입력하세요"
+                    value={ttsProvider.openaiApiKey}
+                    onChange={(e) => setOpenAIApiKey(e.target.value)}
+                    fullWidth
+                  />
+                  <p className="settings-page__hint">
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="settings-page__link"
+                    >
+                      OpenAI Platform
+                    </a>
+                    에서 API 키를 발급받을 수 있습니다.
+                  </p>
+                </div>
+
+                <div className="settings-page__input-group">
+                  <label htmlFor="openai-model" className="settings-page__label">
+                    모델
+                  </label>
+                  <select
+                    id="openai-model"
+                    className="settings-page__select"
+                    value={ttsProvider.openaiModel}
+                    onChange={(e) => setOpenAIModel(e.target.value as 'tts-1' | 'tts-1-hd' | 'gpt-4o-mini-tts')}
                   >
-                    OpenAI Platform
-                  </a>
-                  에서 API 키를 발급받을 수 있습니다.
-                </p>
-              </div>
+                    {OPENAI_MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name} - {model.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
             )}
 
             {/* 음성 선택 */}

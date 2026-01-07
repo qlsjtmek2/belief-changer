@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SelectedVoiceSettings, GeminiSettings } from '../types';
+import type { Settings, VoiceSettings, TTSProviderType, TTSProviderSettings, SelectedVoiceSettings, GeminiSettings, OpenAITTSModel } from '../types';
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   rate: 1,
@@ -12,6 +12,7 @@ const DEFAULT_TTS_PROVIDER_SETTINGS: TTSProviderSettings = {
   activeProvider: 'webspeech',
   elevenlabsApiKey: '',
   openaiApiKey: '',
+  openaiModel: 'gpt-4o-mini-tts',
 };
 
 const DEFAULT_SELECTED_VOICE: SelectedVoiceSettings = {
@@ -55,6 +56,7 @@ interface SettingsState extends Settings {
   setActiveProvider: (provider: TTSProviderType) => void;
   setElevenLabsApiKey: (key: string) => void;
   setOpenAIApiKey: (key: string) => void;
+  setOpenAIModel: (model: OpenAITTSModel) => void;
   getActiveApiKey: () => string | undefined;
   hasTTSApiKey: (provider?: TTSProviderType) => boolean;
 
@@ -127,6 +129,12 @@ export const useSettingsStore = create<SettingsState>()(
       setOpenAIApiKey: (key: string) => {
         set((state) => ({
           ttsProvider: { ...state.ttsProvider, openaiApiKey: key },
+        }));
+      },
+
+      setOpenAIModel: (model: OpenAITTSModel) => {
+        set((state) => ({
+          ttsProvider: { ...state.ttsProvider, openaiModel: model },
         }));
       },
 

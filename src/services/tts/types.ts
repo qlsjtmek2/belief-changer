@@ -1,4 +1,4 @@
-import type { VoiceSettings, TTSProviderType } from '../../types';
+import type { VoiceSettings, TTSProviderType, OpenAITTSModel } from '../../types';
 
 /**
  * TTS 음성 정보
@@ -18,6 +18,7 @@ export interface TTSVoice {
 export interface TTSProviderConfig {
   apiKey?: string;
   voiceSettings?: VoiceSettings;
+  openaiModel?: OpenAITTSModel;
 }
 
 /**
