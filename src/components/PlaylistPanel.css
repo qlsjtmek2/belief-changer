@@ -199,6 +199,37 @@
   }
 }
 
+/* 편집 버튼 */
+.playlist-item__edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-hint);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.playlist-item:hover .playlist-item__edit {
+  opacity: 1;
+}
+
+.playlist-item__edit:hover {
+  background: var(--color-primary-main);
+  color: white;
+}
+
+.playlist-item__edit:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
 /* 삭제 버튼 */
 .playlist-item__delete {
   display: flex;
@@ -240,6 +271,7 @@
     padding: var(--spacing-3) var(--spacing-md);
   }
 
+  .playlist-item__edit,
   .playlist-item__delete {
     opacity: 1;
   }
